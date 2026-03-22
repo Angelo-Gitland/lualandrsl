@@ -87,6 +87,59 @@ textarea{resize:vertical;min-height:100px;}
 #modal-confirm-delete{z-index:60;}
 .attachment-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;}
 .attachment-item{flex-shrink:0;width:80px;height:80px;border-radius:8px;border:1px solid var(--primary-color);object-fit:cover;}
+
+/* ══ IMAGE EDITOR MODAL ══ */
+#modal-img-editor{z-index:300;}
+#modal-img-editor .modal-content{max-width:420px;}
+.img-editor-viewport{
+  width:100%;aspect-ratio:1/1;background:#000;border-radius:var(--radius);
+  overflow:hidden;position:relative;cursor:grab;border:2px solid rgba(176,38,255,0.3);
+  touch-action:none;user-select:none;
+}
+.img-editor-viewport:active{cursor:grabbing;}
+.img-editor-viewport img{
+  position:absolute;transform-origin:0 0;pointer-events:none;
+  image-rendering:crisp-edges;
+}
+/* Crop overlay — shows 1:1 square guide */
+.img-editor-cropguide{
+  position:absolute;inset:0;
+  border:2px dashed rgba(176,38,255,0.6);
+  box-shadow:inset 0 0 0 9999px rgba(0,0,0,0.35);
+  pointer-events:none;border-radius:var(--radius);
+  z-index:2;
+}
+/* Rule-of-thirds grid */
+.img-editor-grid{
+  position:absolute;inset:0;pointer-events:none;z-index:3;
+  background-image:
+    linear-gradient(rgba(176,38,255,0.2) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(176,38,255,0.2) 1px,transparent 1px);
+  background-size:33.33% 33.33%;
+  opacity:0;transition:opacity 0.2s;
+}
+.img-editor-viewport:active .img-editor-grid{opacity:1;}
+.img-editor-zoom-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.img-editor-zoom-row input[type=range]{
+  flex:1;accent-color:var(--primary-color);cursor:pointer;
+  padding:0;height:4px;
+}
+.img-editor-zoom-label{font-size:11px;color:var(--primary-color)!important;min-width:36px;text-align:right;font-weight:700;}
+.img-editor-btn{
+  border-radius:var(--radius);font-weight:700;font-size:13px;
+  padding:0.55rem 1rem;display:inline-flex;align-items:center;gap:6px;
+  transition:all 0.2s;cursor:pointer;border:none;
+}
+.img-editor-btn-primary{background:var(--primary-color);color:#fff!important;}
+.img-editor-btn-secondary{background:transparent;color:var(--primary-color)!important;border:1.5px solid rgba(176,38,255,0.4);}
+.img-editor-btn-preview{background:#1a1a20;color:var(--primary-color)!important;border:1.5px solid rgba(176,38,255,0.3);}
+/* Preview mode */
+.img-preview-result{
+  width:100%;aspect-ratio:1/1;background:#000;border-radius:var(--radius);
+  overflow:hidden;border:2px solid rgba(176,38,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+}
+.img-preview-result img{width:100%;height:100%;object-fit:cover;}
 </style>
 </head>
 <body style="user-select:none;height:100%;overscroll-behavior:contain;">
@@ -193,13 +246,58 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
 <!-- Loading overlay -->
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
-  <p class="neon-text text-sm font-bold">Connecting to LuaLand...</p>
+  <p class="neon-text text-sm font-bold" id="loading-msg">Loading...</p>
 </div>
 
 <div id="app-root">
   <header class="bg-surface border-b border-[rgba(176,38,255,0.2)] flex-shrink-0 relative z-10 shadow-lg hidden">
     <div class="px-4 py-3 flex items-center justify-between">
-      <h1 class="text-2xl font-bold neon-text m-0">LuaLand.RSL</h1>
+      <!-- Logo + Title -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <!-- Custom LuaLand.RSL Logo -->
+        <svg width="46" height="46" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;filter:drop-shadow(0 0 6px rgba(176,38,255,0.6));">
+          <!-- Outer black circle -->
+          <circle cx="100" cy="100" r="98" fill="#0a0a0a" stroke="#b026ff" stroke-width="3"/>
+          <!-- Tick marks around edge -->
+          <g stroke="#fff" stroke-width="1.5" opacity="0.5">
+            <line x1="100" y1="4" x2="100" y2="18"/>
+            <line x1="196" y1="100" x2="182" y2="100"/>
+            <line x1="100" y1="196" x2="100" y2="182"/>
+            <line x1="4" y1="100" x2="18" y2="100"/>
+            <line x1="170" y1="30" x2="160" y2="43"/>
+            <line x1="170" y1="170" x2="160" y2="157"/>
+            <line x1="30" y1="170" x2="40" y2="157"/>
+            <line x1="30" y1="30" x2="40" y2="43"/>
+          </g>
+          <!-- Inner purple circle -->
+          <circle cx="100" cy="100" r="68" fill="#b026ff"/>
+          <!-- 4-pointed star (black) -->
+          <path d="M100 42 C100 42 92 88 56 100 C92 112 100 158 100 158 C100 158 108 112 144 100 C108 88 100 42 100 42Z" fill="#0a0a0a"/>
+          <!-- Top arc text: LuaLand.RSL -->
+          <defs>
+            <path id="topArc" d="M 22,100 A 78,78 0 0,1 178,100"/>
+          </defs>
+          <text font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="26" font-weight="900" fill="white" stroke="#555" stroke-width="3" paint-order="stroke" letter-spacing="2">
+            <textPath href="#topArc" startOffset="50%" text-anchor="middle">LuaLand.RSL</textPath>
+          </text>
+          <!-- Bottom arc text: Require Scripts Library -->
+          <defs>
+            <path id="botArc" d="M 22,100 A 78,78 0 0,0 178,100"/>
+          </defs>
+          <text font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="16" font-weight="700" fill="white" stroke="#555" stroke-width="2.5" paint-order="stroke" letter-spacing="1">
+            <textPath href="#botArc" startOffset="50%" text-anchor="middle">Require Scripts Library</textPath>
+          </text>
+        </svg>
+        <!-- Title with galaxy gradient -->
+        <h1 class="font-bold m-0" style="
+          font-size:1.6rem;letter-spacing:0.04em;
+          background:linear-gradient(135deg,#c084fc 0%,#818cf8 30%,#38bdf8 60%,#b026ff 100%);
+          -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+          background-clip:text;text-shadow:none;
+          filter:drop-shadow(0 0 8px rgba(176,38,255,0.4));
+        ">LuaLand.RSL</h1>
+      </div>
+      <!-- User badge -->
       <div id="header-user-badge" class="items-center gap-2 text-sm text-primary-custom font-bold bg-[rgba(176,38,255,0.1)] px-3 py-1 rounded-full hidden">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span id="header-username"></span>
@@ -678,6 +776,100 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
   </div>
 </div>
 
+<!-- ══ IMAGE EDITOR MODAL — fullscreen native crop style ══ -->
+<div id="modal-img-editor" style="display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column;">
+
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#000;flex-shrink:0;">
+    <button onclick="closeImgEditor()" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;gap:6px;color:#fff;font-family:'Aleo',serif;font-size:14px;font-weight:700;text-shadow:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+    </button>
+    <span style="color:#b026ff;font-family:'Aleo',serif;font-weight:900;font-size:16px;letter-spacing:0.04em;text-shadow:0 0 12px rgba(176,38,255,0.6);">Edit Thumbnail</span>
+    <button onclick="editorAttach()" id="editor-done-btn" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Canvas area — takes all remaining space -->
+  <div id="editor-crop-area" style="flex:1;position:relative;overflow:hidden;background:#000;touch-action:none;">
+    <canvas id="editor-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;"
+      onmousedown="editorPointerDown(event)"
+      onmousemove="editorPointerMove(event)"
+      onmouseup="editorPointerUp()"
+      onmouseleave="editorPointerUp()"
+      onwheel="editorWheelZoom(event)"
+      ontouchstart="editorPointerDown(event)"
+      ontouchmove="editorPointerMove(event)"
+      ontouchend="editorPointerUp()">
+    </canvas>
+  </div>
+
+  <!-- Bottom bar -->
+  <div style="background:#000;padding:16px 20px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;">
+    <!-- Preview + Save row -->
+    <div style="display:flex;gap:10px;">
+      <button onclick="editorShowPreview()" style="flex:1;background:#1a1a20;border:1.5px solid rgba(176,38,255,0.4);border-radius:12px;padding:10px;color:#b026ff;font-family:'Aleo',serif;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-shadow:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        Preview
+      </button>
+      <button onclick="editorSave()" style="flex:1;background:#1a1a20;border:1.5px solid rgba(176,38,255,0.4);border-radius:12px;padding:10px;color:#b026ff;font-family:'Aleo',serif;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-shadow:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
+      <button onclick="editorReset()" style="flex:1;background:#1a1a20;border:1.5px solid rgba(176,38,255,0.2);border-radius:12px;padding:10px;color:rgba(176,38,255,0.7);font-family:'Aleo',serif;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-shadow:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Reset
+      </button>
+    </div>
+    <!-- Attach button -->
+    <button onclick="editorAttach()" style="width:100%;background:#b026ff;border:none;border-radius:12px;padding:14px;color:#fff;font-family:'Aleo',serif;font-weight:900;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:none;box-shadow:0 0 16px rgba(176,38,255,0.4);">
+      <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      Attach Thumbnail
+    </button>
+    <p style="color:rgba(176,38,255,0.4);font-size:10px;text-align:center;font-family:'Aleo',serif;margin:0;text-shadow:none;">Drag corners to crop • Drag inside box to move</p>
+  </div>
+
+  <!-- Preview overlay (shown when Preview button tapped) -->
+  <div id="editor-preview-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.92);z-index:10;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    <p style="color:#b026ff;font-family:'Aleo',serif;font-weight:900;font-size:14px;text-shadow:0 0 8px rgba(176,38,255,0.5);margin:0;">Preview — Final Result</p>
+    <img id="img-preview-result" src="" style="width:80vw;height:80vw;max-width:340px;max-height:340px;object-fit:cover;border-radius:12px;border:2px solid rgba(176,38,255,0.4);">
+    <button onclick="editorHidePreview()" style="background:#b026ff;border:none;border-radius:12px;padding:12px 32px;color:#fff;font-family:'Aleo',serif;font-weight:900;font-size:14px;cursor:pointer;text-shadow:none;">Back to Edit</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN FAILED — MULTIPLE DEVICE OVERLAY ══ -->
+<div id="modal-login-failed" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9998;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;">
+  <style>
+    #modal-login-failed *{font-family:'Aleo',serif;}
+    .lf-icon-wrap{
+      width:80px;height:80px;border-radius:50%;
+      background:#0a0a0a;
+      border:2.5px solid #b026ff;
+      box-shadow:0 0 20px rgba(176,38,255,0.5),0 0 40px rgba(176,38,255,0.2);
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 1.5rem;
+      animation:lfPulse 2s ease-in-out infinite;
+    }
+    @keyframes lfPulse{0%,100%{box-shadow:0 0 20px rgba(176,38,255,0.5),0 0 40px rgba(176,38,255,0.2);}50%{box-shadow:0 0 30px rgba(176,38,255,0.8),0 0 60px rgba(176,38,255,0.4);}}
+    .lf-title{font-size:1.8rem;font-weight:900;color:#b026ff;text-shadow:0 0 16px rgba(176,38,255,0.8),0 0 32px rgba(176,38,255,0.4);margin-bottom:1rem;letter-spacing:0.04em;}
+    .lf-desc{font-size:0.88rem;font-weight:500;color:#b026ff;opacity:0.8;line-height:1.7;max-width:280px;margin:0 auto 2rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:visible;white-space:normal;word-break:break-word;}
+    .lf-btn{background:#b026ff;color:#fff!important;border:none;border-radius:12px;padding:12px 32px;font-size:14px;font-weight:900;cursor:pointer;text-shadow:none;box-shadow:0 0 12px rgba(176,38,255,0.4);}
+    .lf-btn:active{transform:scale(0.96);}
+  </style>
+  <!-- Shield/Lock security icon -->
+  <div class="lf-icon-wrap">
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(176,38,255,0.15)" stroke="#b026ff" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="12" cy="11" r="2.5" fill="#b026ff"/>
+      <path d="M12 13.5v3" stroke="#b026ff" stroke-width="2" stroke-linecap="round"/>
+      <path d="M9 9.5A3 3 0 0 1 15 9.5" stroke="#b026ff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </svg>
+  </div>
+  <h1 class="lf-title">Login Failed!</h1>
+  <p class="lf-desc">Please check, if you have another device connected in this account.</p>
+  <button class="lf-btn" onclick="dismissLoginFailed()">Login</button>
+</div>
+
 <!-- Toast -->
 <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-surface border border-primary-custom text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none">
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary-custom"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
@@ -730,10 +922,14 @@ function showToast(msg) {
 
 function showLoading(msg='Loading...') {
   const ol = document.getElementById('loading-overlay');
-  ol.querySelector('p').textContent = msg;
-  ol.style.display = 'flex';
+  const msgEl = document.getElementById('loading-msg');
+  if(msgEl) msgEl.textContent = msg;
+  if(ol) ol.style.display = 'flex';
 }
-function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
+function hideLoading() {
+  const ol = document.getElementById('loading-overlay');
+  if(ol) ol.style.display = 'none';
+}
 
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -798,7 +994,7 @@ async function doLogin() {
 
   showLoading('Logging in...');
 
-  // Developer bypass
+  // Developer bypass — always allowed
   if(u===DEV_USERNAME && p===DEV_PASSWORD) {
     let profile = (await sbGetExact('users',{username:DEV_USERNAME}))[0];
     if(!profile) {
@@ -814,13 +1010,31 @@ async function doLogin() {
     return;
   }
 
-  // Fetch user by username first
+  // Fetch user by username
   const userRows = await sbGetExact('users',{username:u});
   if(userRows.length===0) { hideLoading(); return showToast("Account not found. Please register first."); }
 
   const user = userRows[0];
-  // Check password
   if(user.password !== p) { hideLoading(); return showToast("Incorrect password."); }
+
+  // ✅ Multi-device check — generate new session token and save to DB
+  // If another device already has a token, show Login Failed
+  const newToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  // Check if user already has an active session token different from ours
+  const existingToken = user.session_token || null;
+  const myStoredToken = localStorage.getItem('lualand_token_' + u);
+
+  if(existingToken && existingToken !== myStoredToken) {
+    // Someone else is logged in on another device
+    hideLoading();
+    showLoginFailed();
+    return;
+  }
+
+  // Save new token to DB and localStorage
+  await sbPatch('users', `username=eq.${u}`, {session_token: newToken});
+  localStorage.setItem('lualand_token_' + u, newToken);
 
   APP.currentUser = u;
   APP.isAdmin = false;
@@ -829,6 +1043,20 @@ async function doLogin() {
   hideLoading();
   initSession();
   showToast(`Welcome back, ${user.display_name||u}!`);
+}
+
+function showLoginFailed() {
+  document.getElementById('modal-login-failed').style.display = 'flex';
+}
+
+function dismissLoginFailed() {
+  document.getElementById('modal-login-failed').style.display = 'none';
+  // Clear fields and return to login form
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('register-form').classList.add('hidden');
+  document.getElementById('forgot-form').classList.add('hidden');
 }
 
 async function doRegister() {
@@ -1935,32 +2163,22 @@ async function saveProfile() {
 
 // ══ FILE HANDLING ══
 function handleFileSelect(e) {
-  const file=e.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const base64=ev.target.result;
-    if(isAvatarUpdate){
-      document.getElementById('edit-avatar-preview').src=base64;
-      pendingThumbnailData=base64;
-      pendingAvatarFile=file;
-      showToast("Avatar ready — tap Save to apply.");
-    } else if(isUploadingExecutorThumb){
-      const prev=document.getElementById('exec-thumb-preview');
-      prev.src=base64; prev.classList.remove('hidden');
-      document.getElementById('exec-thumb-placeholder').classList.add('hidden');
-      document.getElementById('exec-thumb-confirm-overlay').classList.remove('hidden');
-      pendingExecutorThumbData=base64; pendingExecutorThumbFile=file;
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const base64 = ev.target.result;
+    // ✅ Always open image editor first — regardless of type
+    if (isAvatarUpdate) {
+      openImgEditor(base64, file, 'avatar');
+    } else if (isUploadingExecutorThumb) {
+      openImgEditor(base64, file, 'executor');
     } else {
-      const prev=document.getElementById('upload-thumb-preview');
-      prev.src=base64; prev.classList.remove('hidden');
-      document.getElementById('upload-thumb-placeholder').classList.add('hidden');
-      document.getElementById('thumb-confirm-overlay').classList.remove('hidden');
-      pendingThumbnailData=base64; pendingThumbnailFile=file;
+      openImgEditor(base64, file, 'script');
     }
   };
   reader.readAsDataURL(file);
-  e.target.value='';
+  e.target.value = '';
 }
 
 // ══ UPLOAD MODAL ══
@@ -2015,7 +2233,532 @@ function renderExecTags(){
   });
 }
 
-// ══ SETUP ALL LISTENERS ══
+// ══ IMAGE EDITOR ══
+// ══ IMAGE EDITOR (Crop Box Approach) ══
+// The image stays still. A draggable/resizable crop box sits on top.
+// What's inside the crop box = what gets saved. Black outside = exactly what you see.
+
+const imgEditor = {
+  src: null, file: null, targetType: null,
+  savedCropData: null,
+  // Natural image size
+  iw: 0, ih: 0,
+  // Displayed image size on canvas
+  dispW: 0, dispH: 0,
+  // Crop box (in canvas px)
+  cx: 0, cy: 0, cw: 0, ch: 0,
+  // Interaction state
+  action: null, // 'move' | 'resize-tl' | 'resize-tr' | 'resize-bl' | 'resize-br' | 'resize-t' | 'resize-b' | 'resize-l' | 'resize-r'
+  startX: 0, startY: 0,
+  startCx: 0, startCy: 0, startCw: 0, startCh: 0,
+  minCrop: 40,
+  lastDist: 0,
+};
+
+const HANDLE_SIZE = 18; // px, touch-friendly
+
+function openImgEditor(src, file, targetType) {
+  imgEditor.src = src;
+  imgEditor.file = file;
+  imgEditor.targetType = targetType;
+  imgEditor.savedCropData = null;
+  setEditorMode('edit');
+  openModal('modal-img-editor');
+
+  // Load image then init canvas
+  const imgEl = new Image();
+  imgEl.onload = () => {
+    imgEditor.iw = imgEl.naturalWidth;
+    imgEditor.ih = imgEl.naturalHeight;
+    initEditorCanvas(imgEl);
+  };
+  imgEl.src = src;
+}
+
+function initEditorCanvas(imgEl) {
+  const canvas = document.getElementById('editor-canvas');
+  const container = document.getElementById('editor-crop-area');
+  const vpW = container.offsetWidth || window.innerWidth;
+  const vpH = container.offsetHeight || (window.innerHeight - 200);
+
+  canvas.width = vpW;
+  canvas.height = vpH;
+
+  // Fit image inside canvas (contain — show full image)
+  const scaleW = vpW / imgEditor.iw;
+  const scaleH = vpH / imgEditor.ih;
+  const scale = Math.min(scaleW, scaleH);
+  imgEditor.dispW = imgEditor.iw * scale;
+  imgEditor.dispH = imgEditor.ih * scale;
+
+  const imgOffX = (vpW - imgEditor.dispW) / 2;
+  const imgOffY = (vpH - imgEditor.dispH) / 2;
+
+  // Initial crop = full image area (square, centered)
+  const cropSize = Math.min(imgEditor.dispW, imgEditor.dispH);
+  imgEditor.cx = imgOffX + (imgEditor.dispW - cropSize) / 2;
+  imgEditor.cy = imgOffY + (imgEditor.dispH - cropSize) / 2;
+  imgEditor.cw = cropSize;
+  imgEditor.ch = cropSize;
+
+  imgEditor._imgEl = imgEl;
+  imgEditor._imgOffX = imgOffX;
+  imgEditor._imgOffY = imgOffY;
+
+  drawEditorCanvas();
+}
+
+function drawEditorCanvas() {
+  const canvas = document.getElementById('editor-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw full image
+  if (imgEditor._imgEl) {
+    ctx.drawImage(imgEditor._imgEl, imgEditor._imgOffX, imgEditor._imgOffY, imgEditor.dispW, imgEditor.dispH);
+  }
+
+  // Dark overlay outside crop
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = 'rgba(0,0,0,1)';
+  ctx.fillRect(imgEditor.cx, imgEditor.cy, imgEditor.cw, imgEditor.ch);
+  ctx.restore();
+
+  // Redraw image inside crop area (bright, not darkened)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(imgEditor.cx, imgEditor.cy, imgEditor.cw, imgEditor.ch);
+  ctx.clip();
+  if (imgEditor._imgEl) {
+    ctx.drawImage(imgEditor._imgEl, imgEditor._imgOffX, imgEditor._imgOffY, imgEditor.dispW, imgEditor.dispH);
+  }
+  ctx.restore();
+
+  // Crop border — white thin line
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(imgEditor.cx, imgEditor.cy, imgEditor.cw, imgEditor.ch);
+
+  // Rule of thirds grid — thin white inside crop
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(imgEditor.cx + imgEditor.cw * i / 3, imgEditor.cy);
+    ctx.lineTo(imgEditor.cx + imgEditor.cw * i / 3, imgEditor.cy + imgEditor.ch);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(imgEditor.cx, imgEditor.cy + imgEditor.ch * i / 3);
+    ctx.lineTo(imgEditor.cx + imgEditor.cw, imgEditor.cy + imgEditor.ch * i / 3);
+    ctx.stroke();
+  }
+
+  // 4 corner handles — white filled circles (like native phone crop)
+  const corners = [
+    [imgEditor.cx, imgEditor.cy],
+    [imgEditor.cx + imgEditor.cw, imgEditor.cy],
+    [imgEditor.cx, imgEditor.cy + imgEditor.ch],
+    [imgEditor.cx + imgEditor.cw, imgEditor.cy + imgEditor.ch],
+  ];
+  for (const [hx, hy] of corners) {
+    ctx.beginPath();
+    ctx.arc(hx, hy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function getHandleAt(px, py) {
+  const { cx, cy, cw, ch } = imgEditor;
+  const h = 24; // bigger touch target for corners
+  const corners = [
+    ['resize-tl', cx, cy],
+    ['resize-tr', cx+cw, cy],
+    ['resize-bl', cx, cy+ch],
+    ['resize-br', cx+cw, cy+ch],
+  ];
+  for (const [name, hx, hy] of corners) {
+    if (Math.abs(px - hx) < h && Math.abs(py - hy) < h) return name;
+  }
+  // Inside crop = move
+  if (px > cx+h && px < cx+cw-h && py > cy+h && py < cy+ch-h) return 'move';
+  return null;
+}
+
+function getCanvasPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
+function editorPointerDown(e) {
+  e.preventDefault();
+  // Pinch zoom
+  if (e.touches && e.touches.length === 2) {
+    imgEditor.lastDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    imgEditor.action = 'pinch';
+    return;
+  }
+  const canvas = document.getElementById('editor-canvas');
+  const pos = getCanvasPos(e, canvas);
+  imgEditor.action = getHandleAt(pos.x, pos.y);
+  if (!imgEditor.action) return;
+  imgEditor.startX = pos.x;
+  imgEditor.startY = pos.y;
+  imgEditor.startCx = imgEditor.cx;
+  imgEditor.startCy = imgEditor.cy;
+  imgEditor.startCw = imgEditor.cw;
+  imgEditor.startCh = imgEditor.ch;
+}
+
+function editorPointerMove(e) {
+  e.preventDefault();
+  if (!imgEditor.action) return;
+
+  // Pinch to resize crop box
+  if (imgEditor.action === 'pinch' && e.touches && e.touches.length === 2) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const delta = dist - imgEditor.lastDist;
+    imgEditor.lastDist = dist;
+    const cx2 = imgEditor.cx - delta/2;
+    const cy2 = imgEditor.cy - delta/2;
+    const cw2 = imgEditor.cw + delta;
+    const ch2 = imgEditor.ch + delta;
+    if (cw2 >= imgEditor.minCrop && ch2 >= imgEditor.minCrop) {
+      imgEditor.cx = cx2; imgEditor.cy = cy2;
+      imgEditor.cw = cw2; imgEditor.ch = ch2;
+      clampCropBox();
+      drawEditorCanvas();
+    }
+    return;
+  }
+
+  const canvas = document.getElementById('editor-canvas');
+  const pos = getCanvasPos(e, canvas);
+  const dx = pos.x - imgEditor.startX;
+  const dy = pos.y - imgEditor.startY;
+  const { startCx: sx, startCy: sy, startCw: sw, startCh: sh } = imgEditor;
+  const min = imgEditor.minCrop;
+  const W = canvas.width, H = canvas.height;
+
+  let { cx, cy, cw, ch } = imgEditor;
+
+  switch(imgEditor.action) {
+    case 'move':
+      cx = Math.max(0, Math.min(sx + dx, W - sw));
+      cy = Math.max(0, Math.min(sy + dy, H - sh));
+      cw = sw; ch = sh;
+      break;
+    case 'resize-br': {
+      const s = Math.max(min, Math.min(sw+dx, sh+dy, W-sx, H-sy));
+      cw = s; ch = s; cx = sx; cy = sy; break;
+    }
+    case 'resize-tl': {
+      const s = Math.max(min, Math.min(sw-dx, sh-dy));
+      cx = Math.min(sx+sw-min, sx+sw-s);
+      cy = Math.min(sy+sh-min, sy+sh-s);
+      cw = sx+sw-cx; ch = sy+sh-cy; break;
+    }
+    case 'resize-tr': {
+      const s = Math.max(min, Math.min(sw+dx, sh-dy));
+      cy = Math.min(sy+sh-min, sy+sh-s);
+      cw = s; ch = sy+sh-cy; cx = sx; break;
+    }
+    case 'resize-bl': {
+      const s = Math.max(min, Math.min(sw-dx, sh+dy));
+      cx = Math.min(sx+sw-min, sx+sw-s);
+      cw = sx+sw-cx; ch = s; cy = sy; break;
+    }
+    case 'resize-t':
+      cy = Math.min(sy+sh-min, sy+dy);
+      ch = sy+sh-cy; cw = sw; cx = sx; break;
+    case 'resize-b':
+      ch = Math.max(min, sh+dy); cw = sw; cx = sx; cy = sy; break;
+    case 'resize-l':
+      cx = Math.min(sx+sw-min, sx+dx);
+      cw = sx+sw-cx; ch = sh; cy = sy; break;
+    case 'resize-r':
+      cw = Math.max(min, sw+dx); ch = sh; cx = sx; cy = sy; break;
+  }
+
+  imgEditor.cx = cx; imgEditor.cy = cy;
+  imgEditor.cw = Math.max(min, cw);
+  imgEditor.ch = Math.max(min, ch);
+  clampCropBox();
+  drawEditorCanvas();
+
+  // Update zoom label to show crop size
+  document.getElementById('img-editor-zoom-label').textContent = Math.round(imgEditor.cw)+'px';
+}
+
+function editorPointerUp() { imgEditor.action = null; }
+
+function clampCropBox() {
+  const canvas = document.getElementById('editor-canvas');
+  const W = canvas?.width || 340, H = canvas?.height || 340;
+  imgEditor.cx = Math.max(0, Math.min(imgEditor.cx, W - imgEditor.cw));
+  imgEditor.cy = Math.max(0, Math.min(imgEditor.cy, H - imgEditor.ch));
+  imgEditor.cw = Math.min(imgEditor.cw, W - imgEditor.cx);
+  imgEditor.ch = Math.min(imgEditor.ch, H - imgEditor.cy);
+}
+
+// Zoom slider — scales the crop box from center
+function editorZoom(val) {
+  const canvas = document.getElementById('editor-canvas');
+  const W = canvas?.width || 340;
+  const baseSize = W * 0.9;
+  const newSize = Math.max(imgEditor.minCrop, baseSize * (val / 100));
+  const centerX = imgEditor.cx + imgEditor.cw / 2;
+  const centerY = imgEditor.cy + imgEditor.ch / 2;
+  imgEditor.cw = newSize;
+  imgEditor.ch = newSize;
+  imgEditor.cx = centerX - newSize / 2;
+  imgEditor.cy = centerY - newSize / 2;
+  clampCropBox();
+  document.getElementById('img-editor-zoom-label').textContent = Math.round(newSize) + 'px';
+  drawEditorCanvas();
+}
+
+function editorReset() {
+  const canvas = document.getElementById('editor-canvas');
+  const W = canvas?.width || 340, H = canvas?.height || 340;
+  const cropSize = Math.min(imgEditor.dispW, imgEditor.dispH, W, H) * 0.9;
+  imgEditor.cx = (W - cropSize) / 2;
+  imgEditor.cy = (H - cropSize) / 2;
+  imgEditor.cw = cropSize;
+  imgEditor.ch = cropSize;
+  document.getElementById('img-editor-zoom').value = 100;
+  document.getElementById('img-editor-zoom-label').textContent = '100%';
+  drawEditorCanvas();
+}
+
+// Render crop to 800×800 canvas
+function editorRenderCrop() {
+  const out = document.createElement('canvas');
+  out.width = 800; out.height = 800;
+  const ctx = out.getContext('2d');
+
+  // Fill black background
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 800, 800);
+
+  if (!imgEditor._imgEl) return out.toDataURL('image/jpeg', 0.92);
+
+  const edCanvas = document.getElementById('editor-canvas');
+  const vpW = edCanvas.width, vpH = edCanvas.height;
+
+  // Map crop box coords → source image coords
+  const scaleX = imgEditor.iw / imgEditor.dispW;
+  const scaleY = imgEditor.ih / imgEditor.dispH;
+
+  // Crop box relative to image top-left
+  const srcX = (imgEditor.cx - imgEditor._imgOffX) * scaleX;
+  const srcY = (imgEditor.cy - imgEditor._imgOffY) * scaleY;
+  const srcW = imgEditor.cw * scaleX;
+  const srcH = imgEditor.ch * scaleY;
+
+  // Clamp to image bounds
+  const clampedSrcX = Math.max(0, srcX);
+  const clampedSrcY = Math.max(0, srcY);
+  const clampedSrcW = Math.min(srcW, imgEditor.iw - clampedSrcX);
+  const clampedSrcH = Math.min(srcH, imgEditor.ih - clampedSrcY);
+
+  // Draw portion of image that's inside crop and inside actual image bounds
+  if (clampedSrcW > 0 && clampedSrcH > 0) {
+    const destX = (clampedSrcX - srcX) / srcW * 800;
+    const destY = (clampedSrcY - srcY) / srcH * 800;
+    const destW = clampedSrcW / srcW * 800;
+    const destH = clampedSrcH / srcH * 800;
+    ctx.drawImage(imgEditor._imgEl, clampedSrcX, clampedSrcY, clampedSrcW, clampedSrcH, destX, destY, destW, destH);
+  }
+
+  return out.toDataURL('image/jpeg', 0.92);
+}
+
+function setEditorMode(mode) {
+  imgEditor.mode = mode;
+  const editPanel = document.getElementById('editor-panel');
+  const previewPanel = document.getElementById('preview-panel');
+  const tabEdit = document.getElementById('tab-edit-mode');
+  const tabPreview = document.getElementById('tab-preview-mode');
+
+  if (mode === 'edit') {
+    editPanel?.classList.remove('hidden');
+    previewPanel?.classList.add('hidden');
+    tabEdit?.classList.remove('img-editor-btn-preview');
+    tabEdit?.classList.add('img-editor-btn-primary');
+    tabPreview?.classList.remove('img-editor-btn-primary');
+    tabPreview?.classList.add('img-editor-btn-preview');
+  } else {
+    editPanel?.classList.add('hidden');
+    previewPanel?.classList.remove('hidden');
+    tabPreview?.classList.remove('img-editor-btn-preview');
+    tabPreview?.classList.add('img-editor-btn-primary');
+    tabEdit?.classList.remove('img-editor-btn-primary');
+    tabEdit?.classList.add('img-editor-btn-preview');
+    // Render preview — exact crop result
+    const data = editorRenderCrop();
+    document.getElementById('img-preview-result').src = data;
+  }
+}
+
+function closeImgEditor() { closeModal('modal-img-editor'); }
+
+function editorSave() {
+  imgEditor.savedCropData = editorRenderCrop();
+  showToast("Crop saved! Tap 'Attach Thumbnail' when ready.");
+  setEditorMode('preview');
+}
+
+// Convert base64 data URL to a File object
+function base64ToFile(base64, filename) {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
+}
+
+function editorAttach() {
+  const finalData = imgEditor.savedCropData || editorRenderCrop();
+  closeImgEditor();
+
+  // ✅ Always convert base64 → File so it uploads to Storage (not raw base64)
+  const filename = `${APP.currentUser||'user'}_${Date.now()}.jpg`;
+  const file = base64ToFile(finalData, filename);
+
+  if (imgEditor.targetType === 'avatar') {
+    document.getElementById('edit-avatar-preview').src = finalData;
+    pendingThumbnailData = finalData; // preview only
+    pendingAvatarFile = file;         // actual upload file
+    showToast("Avatar attached — tap Save Profile to apply.");
+  } else if (imgEditor.targetType === 'executor') {
+    const prev = document.getElementById('exec-thumb-preview');
+    prev.src = finalData; prev.classList.remove('hidden');
+    document.getElementById('exec-thumb-placeholder').classList.add('hidden');
+    pendingExecutorThumbData = finalData; // preview only
+    pendingExecutorThumbFile = file;      // actual upload file
+    showToast("Thumbnail attached!");
+  } else {
+    const prev = document.getElementById('upload-thumb-preview');
+    prev.src = finalData; prev.classList.remove('hidden');
+    document.getElementById('upload-thumb-placeholder').classList.add('hidden');
+    pendingThumbnailData = finalData; // preview only
+    pendingThumbnailFile = file;      // actual upload file
+    showToast("Thumbnail attached!");
+  }
+  document.getElementById('thumb-confirm-overlay')?.classList.add('hidden');
+  document.getElementById('exec-thumb-confirm-overlay')?.classList.add('hidden');
+}
+
+
+function openImgEditor(src, file, targetType) {
+  imgEditor.src = src;
+  imgEditor.file = file;
+  imgEditor.targetType = targetType;
+  imgEditor.savedCropData = null;
+  const gate = document.getElementById('modal-img-editor');
+  gate.style.display = 'flex';
+  const imgEl = new Image();
+  imgEl.onload = () => {
+    imgEditor.iw = imgEl.naturalWidth;
+    imgEditor.ih = imgEl.naturalHeight;
+    setTimeout(() => initEditorCanvas(imgEl), 60);
+  };
+  imgEl.src = src;
+}
+
+function closeImgEditor() {
+  document.getElementById('modal-img-editor').style.display = 'none';
+  editorHidePreview();
+}
+
+function editorShowPreview() {
+  const data = imgEditor.savedCropData || editorRenderCrop();
+  document.getElementById('img-preview-result').src = data;
+  document.getElementById('editor-preview-overlay').style.display = 'flex';
+}
+
+function editorHidePreview() {
+  const o = document.getElementById('editor-preview-overlay');
+  if (o) o.style.display = 'none';
+}
+
+function setEditorMode() {} // kept for compatibility
+
+function editorSave() {
+  imgEditor.savedCropData = editorRenderCrop();
+  showToast("Crop saved! Tap 'Attach Thumbnail' when ready.");
+  editorShowPreview();
+}
+
+function editorAttach() {
+  const finalData = imgEditor.savedCropData || editorRenderCrop();
+  closeImgEditor();
+  if (imgEditor.targetType === 'avatar') {
+    document.getElementById('edit-avatar-preview').src = finalData;
+    pendingThumbnailData = finalData;
+    pendingAvatarFile = imgEditor.file;
+    showToast("Avatar attached — tap Save Profile to apply.");
+  } else if (imgEditor.targetType === 'executor') {
+    const prev = document.getElementById('exec-thumb-preview');
+    prev.src = finalData; prev.classList.remove('hidden');
+    document.getElementById('exec-thumb-placeholder').classList.add('hidden');
+    pendingExecutorThumbData = finalData;
+    pendingExecutorThumbFile = imgEditor.file;
+    showToast("Thumbnail attached!");
+  } else {
+    const prev = document.getElementById('upload-thumb-preview');
+    prev.src = finalData; prev.classList.remove('hidden');
+    document.getElementById('upload-thumb-placeholder').classList.add('hidden');
+    pendingThumbnailData = finalData;
+    pendingThumbnailFile = imgEditor.file;
+    showToast("Thumbnail attached!");
+  }
+  document.getElementById('thumb-confirm-overlay')?.classList.add('hidden');
+  document.getElementById('exec-thumb-confirm-overlay')?.classList.add('hidden');
+}
+
+function editorWheelZoom(e) {
+  e.preventDefault();
+  // Wheel zooms the crop box
+  const delta = e.deltaY > 0 ? -8 : 8;
+  const newSize = Math.max(imgEditor.minCrop, Math.min(
+    imgEditor.cw + delta,
+    Math.min(document.getElementById('editor-canvas')?.width || 340, document.getElementById('editor-canvas')?.height || 340)
+  ));
+  const cx = imgEditor.cx + imgEditor.cw / 2;
+  const cy = imgEditor.cy + imgEditor.ch / 2;
+  imgEditor.cw = newSize; imgEditor.ch = newSize;
+  imgEditor.cx = cx - newSize / 2; imgEditor.cy = cy - newSize / 2;
+  clampCropBox(); drawEditorCanvas();
+}
+
 function setupListeners(){
   // Nav
   document.querySelectorAll('.nav-link').forEach(btn=>{
@@ -2054,6 +2797,10 @@ function setupListeners(){
   });
 
   document.getElementById('btn-logout').addEventListener('click',()=>{
+    if(APP.currentUser) {
+      localStorage.removeItem('lualand_token_' + APP.currentUser);
+      sbPatch('users', `username=eq.${APP.currentUser}`, {session_token: null});
+    }
     APP.currentUser=null; APP.isAdmin=false; APP.profile=null;
     localStorage.removeItem(SESSION_KEY);
     initSession();
@@ -2521,30 +3268,47 @@ function showDesktopGate(){
 }
 
 async function actualInit(){
-  setupListeners();
-  // ✅ Check if returning from Google OAuth first
-  await handleGoogleCallback();
-  if(APP.currentUser) return; // Google login handled it
-  // Restore session from localStorage
-  if(loadSession()){
-    // Verify session still valid with Supabase
-    showLoading('Restoring session...');
-    const users=await sbGetExact('users',{username:APP.currentUser});
-    if(users.length>0){
-      APP.profile=users[0];
-      APP.isAdmin=(APP.currentUser===DEV_USERNAME);
-      saveSession();
-      hideLoading();
-      initSession();
-      showToast(`Welcome back, ${APP.profile.display_name||APP.currentUser}!`);
+  // Guard: only run setupListeners once
+  if(!window._listenersReady){
+    window._listenersReady = true;
+    setupListeners();
+  }
+
+  try {
+    // Check if returning from Google OAuth first
+    await handleGoogleCallback();
+    if(APP.currentUser){ hideLoading(); return; }
+
+    // Restore session from localStorage
+    if(loadSession()){
+      showLoading('Restoring session...');
+      try {
+        const users = await sbGetExact('users',{username:APP.currentUser});
+        if(users.length>0){
+          APP.profile = users[0];
+          APP.isAdmin = (APP.currentUser===DEV_USERNAME);
+          saveSession();
+          hideLoading();
+          initSession();
+          showToast(`Welcome back, ${APP.profile.display_name||APP.currentUser}!`);
+        } else {
+          APP.currentUser=null; APP.isAdmin=false; APP.profile=null;
+          localStorage.removeItem(SESSION_KEY);
+          hideLoading();
+          initSession();
+        }
+      } catch(e) {
+        // Network error — still show login screen
+        console.warn('Session restore failed:', e);
+        hideLoading();
+        initSession();
+      }
     } else {
-      // Session invalid — clear it
-      APP.currentUser=null; APP.isAdmin=false; APP.profile=null;
-      localStorage.removeItem(SESSION_KEY);
       hideLoading();
       initSession();
     }
-  } else {
+  } catch(e) {
+    console.warn('actualInit error:', e);
     hideLoading();
     initSession();
   }
@@ -2553,23 +3317,22 @@ async function actualInit(){
 // ══ INIT ══
 async function initApp(){
   showLoading('LuaLand.RSL');
-  await new Promise(r=>setTimeout(r,200));
-  hideLoading();
+  await new Promise(r=>setTimeout(r,150));
 
-  // ✅ ALWAYS check desktop gate first — even if session exists
-  // Session restore happens AFTER they switch to desktop site
+  // ALWAYS check desktop gate first
   if(!isDesktopSite()){
+    hideLoading();
     showDesktopGate();
   } else {
     await actualInit();
   }
 }
 
-// ✅ Re-check desktop on resize (handles switching to desktop site)
+// Re-check desktop on resize
 window.addEventListener('resize',()=>{
   const gate=document.getElementById('desktop-gate');
-  if(!gate) return;
-  if(gate.style.display==='flex' && isDesktopSite()){
+  if(!gate||gate.style.display!=='flex') return;
+  if(isDesktopSite()){
     gate.style.display='none';
     actualInit();
   }
