@@ -37,15 +37,15 @@ textarea{resize:vertical;min-height:100px;}
 .card:hover{border-color:rgba(176,38,255,0.3);transform:translateY(-2px);}
 .card-thumb{width:100%;aspect-ratio:1/1;object-fit:cover;background-color:#000;}
 .tag-pill{background:rgba(176,38,255,0.2);padding:2px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;font-size:12px;}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:50;display:flex;justify-content:center;align-items:center;padding:1rem;visibility:hidden;opacity:0;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:200;display:flex;justify-content:center;align-items:center;padding:1rem;visibility:hidden;opacity:0;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s;}
 .modal-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
-/* Login/account tab sits ABOVE any open post modal */
-#tab-account{z-index:55;position:relative;}
+/* Account tab — normal stacking, no z-index override */
+#tab-account{position:relative;}
 .modal-content{background-color:var(--surface-color);border:1px solid rgba(176,38,255,0.2);border-radius:var(--radius);width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.5);transform:scale(0.95);transition:transform 0.3s ease;}
 .modal-overlay.active .modal-content{transform:scale(1);}
-/* When modal-view is open, clicking login field works correctly */
-#modal-view{z-index:48;}
-#modal-view .modal-body input,#modal-view .modal-body textarea{z-index:49;position:relative;}
+/* All modals same z-index — no special cases */
+#modal-view{z-index:200;}
+#modal-confirm-delete{z-index:210;}
 .modal-body{padding:1.5rem;overflow-y:auto;flex-shrink:1;}
 .nav-link{padding:0.5rem 1rem;color:var(--text-muted);font-weight:bold;white-space:nowrap;border-bottom:2px solid transparent;border-radius:0;}
 .nav-link.active{color:var(--primary-color);border-bottom-color:var(--primary-color);}
@@ -197,7 +197,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
 </div>
 
 <div id="app-root">
-  <header class="bg-surface border-b border-[rgba(176,38,255,0.2)] flex-shrink-0 relative z-40 shadow-lg hidden">
+  <header class="bg-surface border-b border-[rgba(176,38,255,0.2)] flex-shrink-0 relative z-10 shadow-lg hidden">
     <div class="px-4 py-3 flex items-center justify-between">
       <h1 class="text-2xl font-bold neon-text m-0">LuaLand.RSL</h1>
       <div id="header-user-badge" class="items-center gap-2 text-sm text-primary-custom font-bold bg-[rgba(176,38,255,0.1)] px-3 py-1 rounded-full hidden">
