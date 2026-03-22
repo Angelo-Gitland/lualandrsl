@@ -623,8 +623,12 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
         <div class="bg-black/30 p-4 rounded-custom border border-primary-custom/10 space-y-4">
           <div><span class="block text-xs font-bold uppercase opacity-60">Title:</span><span id="view-title-label" class="text-xl font-bold text-white"></span></div>
-          <div><span class="block text-xs font-bold uppercase opacity-60">Uploaded by:</span><span id="view-creator-label" class="text-md font-bold text-white flex items-center gap-1 flex-wrap"></span></div>
-          <div id="view-script-creator-row" class="hidden"><span class="block text-xs font-bold uppercase opacity-60">Script Creator:</span><span id="view-script-creator-label" class="text-md font-bold" style="color:#b026ff!important;"></span></div>
+          <!-- Creator = script_creator (what user typed) — shown as "Creator:" -->
+          <div><span class="block text-xs font-bold uppercase opacity-60">Creator:</span><span id="view-script-creator-label" class="text-md font-bold" style="color:#b026ff!important;"></span></div>
+          <!-- Uploaded by = actual account who uploaded — always the logged-in user -->
+          <div id="view-uploader-row"><span class="block text-xs font-bold uppercase opacity-60">Uploaded by:</span><span id="view-creator-label" class="text-md font-bold text-white flex items-center gap-1 flex-wrap"></span></div>
+          <!-- Hidden row kept for compatibility -->
+          <div id="view-script-creator-row" class="hidden"></div>
           <div><span class="block text-xs font-bold uppercase opacity-60">Description:</span><p id="view-description" class="whitespace-pre-wrap text-sm text-gray-200 leading-relaxed"></p></div>
           <div><span class="block text-xs font-bold uppercase opacity-60">Type:</span><span id="view-type-label" class="text-sm font-bold text-primary-custom"></span></div>
           <div><span class="block text-xs font-bold uppercase opacity-60">Tags:</span><div id="view-tags" class="flex flex-wrap gap-2 mt-1"></div></div>
@@ -956,7 +960,9 @@ async function renderFeed() {
     const card=document.createElement('div');
     card.className='card';
     card.onclick=()=>openViewModal(post,'posts');
-    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${post.creator}</p></div></div>`;
+    // ✅ Show script_creator on card if set, otherwise show uploader username
+    const displayCreator = post.script_creator || post.creator;
+    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${displayCreator}</p></div></div>`;
     grid.appendChild(card);
   });
 }
@@ -977,7 +983,8 @@ async function renderClientFeed() {
     const card=document.createElement('div');
     card.className='card';
     card.onclick=()=>openViewModal(post,'client_posts');
-    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${post.creator}</p></div></div>`;
+    const displayCreator = post.script_creator || post.creator;
+    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${displayCreator}</p></div></div>`;
     grid.appendChild(card);
   });
 }
@@ -1142,18 +1149,11 @@ async function openViewModal(post, table) {
 
   // ✅ Uploader = who published it (with badges)
   const uploaderProfile=(await sbGet('users',`username=eq.${post.creator}&select=verified`))[0]||{};
+  // ✅ "Uploaded by" = actual uploader account (always APP.currentUser who posted)
   document.getElementById('view-creator-label').innerHTML=post.creator+getUserBadges(post.creator,uploaderProfile.verified);
-
-  // ✅ Script Creator = who actually made the script (optional)
-  const sc=post.script_creator||'';
-  const scRow=document.getElementById('view-script-creator-row');
+  // ✅ "Creator:" = script_creator field (what was typed in Creator textbox)
   const scLabel=document.getElementById('view-script-creator-label');
-  if(sc){
-    scRow.classList.remove('hidden');
-    scLabel.textContent=sc;
-  } else {
-    scRow.classList.add('hidden');
-  }
+  if(scLabel) scLabel.textContent = post.script_creator || post.creator;
 
   const tagCont=document.getElementById('view-tags');
   tagCont.innerHTML='';
@@ -1196,13 +1196,9 @@ async function openExecutorView(post) {
   // ✅ Uploader with badges
   const uploaderProfile=(await sbGet('users',`username=eq.${post.creator}&select=verified`))[0]||{};
   document.getElementById('view-creator-label').innerHTML=post.creator+getUserBadges(post.creator,uploaderProfile.verified);
-
-  // ✅ Script Creator row
-  const sc=post.script_creator||'';
-  const scRow=document.getElementById('view-script-creator-row');
+  // ✅ Creator label = script_creator or fallback to uploader
   const scLabel=document.getElementById('view-script-creator-label');
-  if(sc){ scRow.classList.remove('hidden'); scLabel.textContent=sc; }
-  else { scRow.classList.add('hidden'); }
+  if(scLabel) scLabel.textContent = post.script_creator || post.creator;
 
   const tagCont=document.getElementById('view-tags');
   tagCont.innerHTML='';
@@ -2478,11 +2474,14 @@ function loadSession(){
 
 // ══ DESKTOP GATE ══
 function isDesktopSite(){
-  // Check if user agent is desktop OR if user has forced desktop mode
   const ua=navigator.userAgent;
   const isMobileUA=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-  // Also check window width — desktop site on mobile typically gives wider viewport
+  // On mobile, desktop site mode makes viewport much wider (usually 900px+)
+  // Regular mobile site is usually under 600px wide
   const isWideEnough=window.innerWidth>=900;
+  // If mobile UA but wide enough = user switched to desktop site ✅
+  // If mobile UA and narrow = still mobile site ❌
+  // If desktop UA = always allowed ✅
   return !isMobileUA || isWideEnough;
 }
 
@@ -2534,16 +2533,27 @@ async function actualInit(){
 // ══ INIT ══
 async function initApp(){
   showLoading('LuaLand.RSL');
-  // Small delay for DOM
   await new Promise(r=>setTimeout(r,200));
   hideLoading();
 
+  // ✅ ALWAYS check desktop gate first — even if session exists
+  // Session restore happens AFTER they switch to desktop site
   if(!isDesktopSite()){
     showDesktopGate();
   } else {
     await actualInit();
   }
 }
+
+// ✅ Re-check desktop on resize (handles switching to desktop site)
+window.addEventListener('resize',()=>{
+  const gate=document.getElementById('desktop-gate');
+  if(!gate) return;
+  if(gate.style.display==='flex' && isDesktopSite()){
+    gate.style.display='none';
+    actualInit();
+  }
+});
 
 document.addEventListener('DOMContentLoaded',initApp);
 </script>
