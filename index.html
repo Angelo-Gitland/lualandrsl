@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%;overscroll-behavior:contain;user-select:none;-webkit-tap-highlight-color:transparent;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>LuaLand.RSL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Aleo:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root {
+  --bg-color:#08080a; --surface-color:#121216; --surface-color-hover:#1a1a20;
+  --primary-color:#b026ff; --text-color:#b026ff; --text-muted:#8d46ff;
+  --radius:12px; --neon-glow:0 0 8px rgba(176,38,255,0.5);
+}
+html,body{height:100%;margin:0;padding:0;background-color:var(--bg-color);color:var(--text-color);font-family:'Aleo',serif;text-shadow:0 0 2px rgba(176,38,255,0.3);}
+p,span,h1,h2,h3,h4,label,input,textarea,select{color:var(--primary-color)!important;}
+.text-gray-400,.text-gray-500,.text-gray-300{color:var(--text-muted)!important;}
+#app-root{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg-color);}
+::-webkit-scrollbar-thumb{background:var(--surface-color-hover);border-radius:var(--radius);}
+::-webkit-scrollbar-thumb:hover{background:var(--primary-color);}
+.neon-text{color:var(--primary-color);text-shadow:var(--neon-glow);}
+.text-primary-custom{color:var(--primary-color);}
+.bg-primary-custom{background-color:var(--primary-color);color:#fff;}
+.bg-surface{background-color:var(--surface-color);}
+button,.btn{border-radius:var(--radius);transition:all 0.2s ease;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;}
+button:active{transform:scale(0.96);opacity:0.8;}
+input,select,textarea{background-color:var(--bg-color);border:1px solid var(--surface-color-hover);color:var(--text-color);border-radius:var(--radius);padding:0.75rem 1rem;font-family:inherit;font-size:16px;width:100%;outline:none;transition:border-color 0.2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--primary-color);box-shadow:inset 0 0 5px rgba(176,38,255,0.2);}
+textarea{resize:vertical;min-height:100px;}
+.code-box{font-family:monospace;white-space:pre-wrap;background-color:#000;border:1px solid var(--surface-color-hover);padding:1rem;border-radius:var(--radius);font-size:14px;overflow-x:auto;}
+.rounded-custom{border-radius:var(--radius);}
+.card{background-color:var(--surface-color);border-radius:var(--radius);border:1px solid transparent;overflow:hidden;transition:border-color 0.2s,transform 0.2s;cursor:pointer;display:flex;flex-direction:column;}
+.card:hover{border-color:rgba(176,38,255,0.3);transform:translateY(-2px);}
+.card-thumb{width:100%;aspect-ratio:1/1;object-fit:cover;background-color:#000;}
+.tag-pill{background:rgba(176,38,255,0.2);padding:2px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;font-size:12px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:50;display:flex;justify-content:center;align-items:center;padding:1rem;visibility:hidden;opacity:0;pointer-events:none;transition:opacity 0.3s ease,visibility 0.3s;}
+.modal-overlay.active{visibility:visible;opacity:1;pointer-events:auto;}
+/* Login/account tab sits ABOVE any open post modal */
+#tab-account{z-index:55;position:relative;}
+.modal-content{background-color:var(--surface-color);border:1px solid rgba(176,38,255,0.2);border-radius:var(--radius);width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.5);transform:scale(0.95);transition:transform 0.3s ease;}
+.modal-overlay.active .modal-content{transform:scale(1);}
+/* When modal-view is open, clicking login field works correctly */
+#modal-view{z-index:48;}
+#modal-view .modal-body input,#modal-view .modal-body textarea{z-index:49;position:relative;}
+.modal-body{padding:1.5rem;overflow-y:auto;flex-shrink:1;}
+.nav-link{padding:0.5rem 1rem;color:var(--text-muted);font-weight:bold;white-space:nowrap;border-bottom:2px solid transparent;border-radius:0;}
+.nav-link.active{color:var(--primary-color);border-bottom-color:var(--primary-color);}
+.tab-content{display:none;height:100%;overflow-y:auto;}
+.tab-content.active{display:flex;flex-direction:column;}
+.tag{background:rgba(176,38,255,0.15);color:var(--primary-color);padding:0.25rem 0.75rem;border-radius:99px;font-size:0.75rem;font-weight:bold;display:inline-block;}
+.hidden{display:none!important;}
+.dev-crown-tag{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,rgba(255,215,0,0.18),rgba(255,140,0,0.12));border:1px solid rgba(255,215,0,0.55);border-radius:5px;padding:1px 6px 1px 4px;font-size:9px;font-weight:900;color:#FFD700!important;text-shadow:0 0 8px rgba(255,215,0,0.7);vertical-align:middle;margin-left:4px;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;}
+.verified-badge{display:inline-flex;align-items:center;gap:3px;background:#000;border:1px solid rgba(255,255,255,0.25);border-radius:5px;padding:1px 6px 1px 4px;font-size:9px;font-weight:900;color:#fff!important;text-shadow:none;vertical-align:middle;margin-left:4px;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;}
+.creator-row{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow:hidden;}
+.creator-name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.friends-sub-tab{color:var(--text-muted);transition:all 0.2s;}
+.friends-sub-tab.active-sub{color:var(--primary-color);border-bottom-color:var(--primary-color)!important;}
+.friends-sub-content{display:none;}
+.friends-sub-content.active-sub{display:flex;flex-direction:column;}
+.inbox-item{background:var(--surface-color);border:1px solid rgba(176,38,255,0.12);border-radius:var(--radius);padding:12px 14px;}
+.inbox-item.type-friend-request{border-left:3px solid #b026ff;}
+.inbox-item.type-follow{border-left:3px solid #3b82f6;}
+.inbox-item.type-comment{border-left:3px solid #22c55e;}
+.inbox-item.type-mention{border-left:3px solid #f59e0b;}
+.inbox-item.type-friend-accept{border-left:3px solid #22c55e;}
+.inbox-item.type-friend-reject{border-left:3px solid #ef4444;}
+.db-user-row{background:var(--surface-color);border:1px solid rgba(176,38,255,0.12);border-radius:var(--radius);padding:10px 14px;transition:border-color 0.2s;cursor:pointer;}
+.db-user-row:hover{border-color:rgba(176,38,255,0.4);}
+.db-user-row.active-row{border-color:var(--primary-color);}
+#mention-box{position:absolute;bottom:calc(100% + 5px);left:0;width:200px;max-height:150px;background:var(--surface-color);border:1px solid var(--primary-color);border-radius:var(--radius);overflow-y:auto;z-index:100;box-shadow:0 4px 15px rgba(0,0,0,0.5);display:none;}
+.mention-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(176,38,255,0.1);transition:background 0.2s;}
+.mention-item:hover{background:rgba(176,38,255,0.15);}
+.mention-blue{color:#3b82f6!important;font-weight:bold;}
+/* Loading overlay */
+#loading-overlay{position:fixed;inset:0;background:var(--bg-color);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.loading-spinner{width:48px;height:48px;border:3px solid rgba(176,38,255,0.2);border-top-color:var(--primary-color);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* New password recovery */
+.recover-title{font-size:1.5rem;font-weight:900;text-align:center;color:var(--primary-color)!important;text-shadow:0 0 16px rgba(176,38,255,0.7);letter-spacing:0.04em;margin-bottom:0.25rem;}
+.input-label-bold{display:block;font-weight:700;font-size:0.8rem;color:var(--primary-color)!important;text-align:left;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em;}
+.recover-btn-confirm{background:var(--primary-color);color:#fff!important;font-weight:900;border-radius:var(--radius);padding:0.6rem 1.2rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;}
+.recover-btn-cancel{background:transparent;color:var(--text-muted)!important;font-weight:700;border-radius:var(--radius);padding:0.6rem 1.2rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;border:1px solid rgba(176,38,255,0.2);}
+#modal-confirm-delete{z-index:60;}
+.attachment-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;}
+.attachment-item{flex-shrink:0;width:80px;height:80px;border-radius:8px;border:1px solid var(--primary-color);object-fit:cover;}
+</style>
+</head>
+<body style="user-select:none;height:100%;overscroll-behavior:contain;">
+
+<!-- ══ SUPABASE CONFIG ══ -->
+<script>
+const SUPABASE_URL = 'https://zcioapswxzqttijygctt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjaW9hcHN3eHpxdHRpanlnY3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMjUyNTMsImV4cCI6MjA4OTcwMTI1M30.ENBpK-eChgNzhS_M95iGMzJzyVNvUDf1ySwdm_je1Dg';
+const SB_HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+// ══ SUPABASE API HELPERS ══
+async function sbGet(table, query='') {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: SB_HEADERS });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch(e) { console.error('sbGet error:', e); return []; }
+}
+async function sbPost(table, body) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method:'POST', headers:SB_HEADERS, body:JSON.stringify(body) });
+    const data = await r.json();
+    return r.ok ? (Array.isArray(data) ? data[0] : data) : null;
+  } catch(e) { console.error('sbPost error:', e); return null; }
+}
+async function sbPatch(table, query, body) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { method:'PATCH', headers:SB_HEADERS, body:JSON.stringify(body) });
+    return r.ok;
+  } catch(e) { console.error('sbPatch error:', e); return false; }
+}
+async function sbDelete(table, query) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { method:'DELETE', headers:SB_HEADERS });
+    return r.ok;
+  } catch(e) { console.error('sbDelete error:', e); return false; }
+}
+async function sbUpsert(table, body) {
+  try {
+    const h = { ...SB_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates' };
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method:'POST', headers:h, body:JSON.stringify(body) });
+    const data = await r.json();
+    return r.ok ? (Array.isArray(data) ? data[0] : data) : null;
+  } catch(e) { console.error('sbUpsert error:', e); return null; }
+}
+
+// ══ STORAGE UPLOAD ══
+async function uploadToStorage(bucket, file, filename) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filename}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: formData
+    });
+    if (!r.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${filename}`;
+  } catch(e) { console.error('uploadToStorage error:', e); return null; }
+}
+
+// Convert base64 to Blob for upload
+function base64ToBlob(base64, mimeType='image/jpeg') {
+  const byteString = atob(base64.split(',')[1]);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  return new Blob([ab], { type: mimeType });
+}
+</script>
+
+<audio id="music-bgm" loop src="https://prod-data.sekai.chat/chat-creation/0fd4f3db-0a95-4059-aa01-dddfb83717e8.mp3"></audio>
+<audio id="sfx-tap" src="https://prod-data.sekai.chat/chat-creation/b148d187-e529-411d-b2bd-cbe14ce572da.wav"></audio>
+<input type="file" id="hidden-input" accept="image/png,image/jpeg,image/webp" class="hidden">
+
+<!-- Desktop Gate Overlay -->
+<div id="desktop-gate" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;">
+  <style>
+    #desktop-gate *{font-family:'Aleo',serif;}
+    .gate-title{font-size:2rem;font-weight:900;color:#b026ff;text-shadow:0 0 16px rgba(176,38,255,0.8),0 0 32px rgba(176,38,255,0.4);margin-bottom:1.5rem;letter-spacing:0.05em;}
+    .gate-desc{font-size:0.95rem;font-weight:400;color:#b026ff;text-shadow:0 0 4px rgba(176,38,255,0.4);line-height:1.8;max-width:320px;margin:0 auto 2rem;opacity:0.85;white-space:normal;word-break:break-word;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:visible;}
+    .gate-icon{margin-bottom:1.5rem;opacity:0.6;}
+    .gate-pulse{width:12px;height:12px;border-radius:50%;background:#b026ff;box-shadow:0 0 8px rgba(176,38,255,0.8);animation:gatePulse 1.5s ease-in-out infinite;margin:1.5rem auto 0;}
+    @keyframes gatePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.8);}}
+  </style>
+  <!-- Icon -->
+  <div class="gate-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="20" height="14" x="2" y="3" rx="2"/>
+      <path d="M8 21h8"/>
+      <path d="M12 17v4"/>
+    </svg>
+  </div>
+  <h1 class="gate-title">LuaLand.RSL</h1>
+  <p class="gate-desc">To continue in LuaLand.Require Scripts Library, You must switch to desktop site before proceeding...</p>
+  <div class="gate-pulse"></div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <p class="neon-text text-sm font-bold">Connecting to LuaLand...</p>
+</div>
+
+<div id="app-root">
+  <header class="bg-surface border-b border-[rgba(176,38,255,0.2)] flex-shrink-0 relative z-40 shadow-lg hidden">
+    <div class="px-4 py-3 flex items-center justify-between">
+      <h1 class="text-2xl font-bold neon-text m-0">LuaLand.RSL</h1>
+      <div id="header-user-badge" class="items-center gap-2 text-sm text-primary-custom font-bold bg-[rgba(176,38,255,0.1)] px-3 py-1 rounded-full hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span id="header-username"></span>
+      </div>
+    </div>
+    <nav id="main-nav" class="flex overflow-x-auto px-2 pb-0" style="touch-action:pan-x;">
+      <button class="nav-link" data-target="Require_Scripts">Require_Scripts</button>
+      <button class="nav-link" data-target="client_scripts">Client_Scripts</button>
+      <button class="nav-link" data-target="executors">Executors</button>
+      <button class="nav-link" data-target="friends">Friends</button>
+      <button class="nav-link" data-target="notifications">Notifications <span id="nav-notif-badge" class="hidden ml-1 bg-red-500 text-white text-[8px] font-black rounded-full px-1">0</span></button>
+      <button class="nav-link active" data-target="account">Account</button>
+      <button class="nav-link hidden" id="nav-reports-btn" data-target="reports">Reports</button>
+      <button class="nav-link hidden" id="nav-database-btn" data-target="database">Database</button>
+    </nav>
+  </header>
+
+  <main class="flex-1 overflow-hidden relative">
+
+    <!-- TAB: REQUIRE SCRIPTS -->
+    <div id="tab-Require_Scripts" class="tab-content p-4">
+      <div class="flex flex-wrap gap-3 mb-6 items-center">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+          <input type="text" id="search-input" placeholder="Search require scripts..." class="pl-10">
+        </div>
+        <select id="category-select" class="w-auto min-w-[140px]">
+          <option value="All">All Categories</option>
+          <option value="Abilities">Abilities</option>
+          <option value="Guis">Guis</option>
+          <option value="Spawner">Spawner</option>
+          <option value="Jumpscares">Jumpscares</option>
+        </select>
+        <button id="btn-open-upload" class="bg-primary-custom p-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+        </button>
+      </div>
+      <div id="feed-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10"></div>
+    </div>
+
+    <!-- TAB: CLIENT SCRIPTS -->
+    <div id="tab-client_scripts" class="tab-content p-4">
+      <div class="flex flex-wrap gap-3 mb-6 items-center">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+          <input type="text" id="client-search-input" placeholder="Search client scripts..." class="pl-10">
+        </div>
+        <select id="client-category-select" class="w-auto min-w-[140px]">
+          <option value="All">All Categories</option>
+          <option value="Script Games">Script Games</option>
+          <option value="Universal Script">Universal Script</option>
+          <option value="Admin Scripts">Admin Scripts</option>
+          <option value="Script Hub">Script Hub</option>
+        </select>
+        <button id="btn-open-client-upload" class="bg-primary-custom p-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+        </button>
+      </div>
+      <div id="client-feed-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10"></div>
+    </div>
+
+    <!-- TAB: EXECUTORS -->
+    <div id="tab-executors" class="tab-content p-4">
+      <div class="flex flex-wrap gap-3 mb-6 items-center">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 transform -translate-y-1/2 opacity-60"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+          <input type="text" id="executor-search-input" placeholder="Search Executors..." class="pl-10">
+        </div>
+        <select id="executor-category-select" class="w-auto min-w-[160px]">
+          <option value="All">All Category</option>
+          <option value="Mobile">Mobile Executors</option>
+          <option value="PC">Pc Executors</option>
+          <option value="Free">Free</option>
+          <option value="Paid">Paid</option>
+        </select>
+        <button id="btn-open-executor-upload" class="bg-primary-custom p-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+        </button>
+      </div>
+      <div id="executor-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10"></div>
+    </div>
+
+    <!-- TAB: ACCOUNT -->
+    <div id="tab-account" class="tab-content p-4 active">
+      <div id="account-logged-in" class="max-w-4xl mx-auto w-full space-y-6 hidden">
+        <div class="bg-surface rounded-custom p-6 border border-primary-custom/20">
+          <div class="flex flex-col md:flex-row gap-6 items-center md:items-start">
+            <div class="relative group">
+              <img id="profile-avatar-display" src="" class="w-24 h-24 rounded-full border-2 border-primary-custom object-cover bg-black">
+              <button id="btn-edit-avatar" class="absolute bottom-0 right-0 bg-primary-custom p-1 rounded-full text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </button>
+            </div>
+            <div class="flex-1 text-center md:text-left">
+              <h2 id="profile-name-display" class="text-3xl font-bold neon-text flex items-center justify-center md:justify-start gap-2 flex-wrap"></h2>
+              <p id="profile-bio-display" class="text-sm mt-2"></p>
+              <div class="flex gap-4 mt-4 justify-center md:justify-start text-xs font-bold uppercase">
+                <span><span id="stat-followers" class="text-white mr-1">0</span> Followers</span>
+                <span><span id="stat-friends" class="text-white mr-1">0</span> Friends</span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <button id="btn-edit-profile" class="border border-primary-custom px-4 py-2 text-sm rounded-custom">Edit Profile</button>
+              <button id="btn-logout" class="bg-red-600/20 text-red-500 border border-red-500/30 px-4 py-2 text-sm rounded-custom">Log-Out</button>
+            </div>
+          </div>
+        </div>
+        <h3 class="text-xl font-bold neon-text mb-2">Your System Assets</h3>
+        <div class="space-y-6">
+          <div><h4 class="text-xs font-bold text-primary-custom uppercase opacity-60 mb-3">Require Scripts</h4><div id="account-require-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div></div>
+          <div><h4 class="text-xs font-bold text-primary-custom uppercase opacity-60 mb-3">Client Scripts</h4><div id="account-client-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div></div>
+          <div><h4 class="text-xs font-bold text-primary-custom uppercase opacity-60 mb-3">Executors</h4><div id="account-executor-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div></div>
+        </div>
+      </div>
+
+      <div id="account-logged-out" class="max-w-md mx-auto w-full pt-10">
+        <div class="bg-surface p-8 border border-primary-custom/20 rounded-custom space-y-6">
+          <div class="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto text-primary-custom mb-2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <h2 class="text-2xl font-bold neon-text">Access Terminal</h2>
+          </div>
+          <div id="login-form" class="space-y-4">
+            <input type="text" id="login-username" placeholder="Username">
+            <input type="password" id="login-password" placeholder="Password">
+            <div class="flex justify-between text-xs">
+              <button id="btn-goto-register" class="text-primary-custom">Create Account</button>
+              <button id="btn-goto-forgot" class="text-gray-500">Forgot Password?</button>
+            </div>
+            <button id="btn-do-login" class="w-full bg-primary-custom py-3 font-bold">Log-In</button>
+            <!-- Divider -->
+            <div class="flex items-center gap-3 my-1">
+              <div class="flex-1 h-px bg-primary-custom/20"></div>
+              <span style="color:var(--text-muted)!important;font-size:11px;font-weight:700;opacity:0.6;">OR</span>
+              <div class="flex-1 h-px bg-primary-custom/20"></div>
+            </div>
+            <!-- Google Login Button -->
+            <button id="btn-google-login" class="w-full py-3 font-bold rounded-custom flex items-center justify-center gap-3"
+              style="background:#fff;color:#1f1f1f!important;border:1.5px solid #e0e0e0;box-shadow:0 1px 6px rgba(0,0,0,0.18);text-shadow:none;font-family:'Aleo',serif;font-size:15px;">
+              <!-- Official Google G SVG -->
+              <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+              </svg>
+              <span style="color:#1f1f1f!important;text-shadow:none!important;">Continue with Google</span>
+            </button>
+          </div>
+          <div id="register-form" class="hidden space-y-4">
+            <h3 class="text-lg font-bold text-center neon-text mb-2">Create Account</h3>
+            <input type="text" id="reg-username" placeholder="New Username (8+ characters)">
+            <input type="password" id="reg-password" placeholder="New Password (10+ characters)">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold uppercase px-1">Protect.me</label>
+              <input type="text" id="reg-protect" maxlength="30" placeholder="Create your Protect.me password...">
+              <p class="text-[9px] text-gray-500 px-1 mt-1">At least 8 characters, cannot match username or password.</p>
+            </div>
+            <button id="btn-do-register" class="w-full bg-primary-custom py-3 font-bold">Register</button>
+            <button id="btn-back-login-reg" class="w-full text-xs text-gray-500 mt-2">Back to Login</button>
+          </div>
+          <div id="forgot-form" class="hidden space-y-4">
+            <div id="forgot-step1">
+              <h3 class="text-lg font-bold text-center neon-text mb-2">Recover Password</h3>
+              <p class="text-xs text-center opacity-70 mb-3">Enter username and Protect.me password.</p>
+              <div class="space-y-3">
+                <input type="text" id="forgot-username-main" placeholder="Username">
+                <input type="text" id="forgot-protectme-input" placeholder="Your Protect.me password...">
+              </div>
+              <button id="btn-do-forgot-main" class="w-full bg-primary-custom py-3 font-bold mt-4">Verify Identity</button>
+              <button id="btn-back-login-forgot" class="w-full text-xs text-gray-500 mt-2">Back to Login</button>
+            </div>
+            <div id="new-password-panel" class="hidden space-y-5">
+              <h3 class="recover-title">Create New Password</h3>
+              <p class="text-[10px] text-center opacity-50 -mt-3">Recovery verified. Choose a strong new password.</p>
+              <div><label class="input-label-bold">New Password</label><input type="password" id="new-pass-input" placeholder="Create your new password..." maxlength="30"></div>
+              <div><label class="input-label-bold">Confirm Password</label><input type="password" id="confirm-pass-input" placeholder="Repeat password..." maxlength="30"></div>
+              <div class="flex justify-end gap-3 pt-1">
+                <button id="btn-cancel-newpass" class="recover-btn-cancel">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>Cancel
+                </button>
+                <button id="btn-confirm-newpass" class="recover-btn-confirm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: FRIENDS -->
+    <div id="tab-friends" class="tab-content">
+      <div class="flex border-b border-primary-custom/20 flex-shrink-0 bg-surface sticky top-0 z-10">
+        <button class="friends-sub-tab px-5 py-3 text-xs font-bold uppercase border-b-2 border-transparent active-sub" data-sub="search">Search</button>
+        <button class="friends-sub-tab px-5 py-3 text-xs font-bold uppercase border-b-2 border-transparent" data-sub="mylist">My Friends</button>
+        <button class="friends-sub-tab px-5 py-3 text-xs font-bold uppercase border-b-2 border-transparent" data-sub="inbox">My Inbox <span id="inbox-badge" class="ml-1 hidden bg-red-500 text-white text-[8px] font-black rounded-full px-1.5 py-0.5">0</span></button>
+      </div>
+      <div id="friends-sub-search" class="friends-sub-content p-4 flex-1 overflow-y-auto active-sub">
+        <div class="max-w-xl mx-auto w-full space-y-4">
+          <div class="relative"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg><input type="text" id="friend-search" placeholder="Search user names..." class="pl-10"></div>
+          <div id="users-search-results" class="space-y-2"></div>
+        </div>
+      </div>
+      <div id="friends-sub-mylist" class="friends-sub-content p-4 flex-1 overflow-y-auto hidden"><div class="max-w-xl mx-auto w-full"><div id="friends-list" class="space-y-2"></div></div></div>
+      <div id="friends-sub-inbox" class="friends-sub-content flex-1 overflow-y-auto hidden flex-col">
+        <div class="p-4 pb-2 flex-shrink-0"><h2 class="text-xl font-bold neon-text mb-3">My Inbox</h2></div>
+        <div id="inbox-list" class="flex-1 overflow-y-auto px-4 pb-4 space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- TAB: NOTIFICATIONS -->
+    <div id="tab-notifications" class="tab-content flex-col">
+      <div class="p-4 pb-2 flex-shrink-0 border-b border-primary-custom/20">
+        <h2 class="text-xl font-bold neon-text mb-1">Notifications</h2>
+        <p class="text-[10px] opacity-50">All your activity notifications.</p>
+      </div>
+      <div id="notif-tab-list" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+    </div>
+
+    <!-- TAB: DATABASE -->
+    <div id="tab-database" class="tab-content flex-col">
+      <div class="p-4 pb-2 flex-shrink-0 border-b border-primary-custom/20">
+        <h2 class="text-xl font-bold neon-text mb-3">Database</h2>
+        <input type="text" id="db-search" placeholder="Search usernames..." class="text-sm">
+      </div>
+      <div id="db-user-list" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+    </div>
+
+    <!-- TAB: REPORTS -->
+    <div id="tab-reports" class="tab-content p-4">
+      <div class="max-w-4xl mx-auto w-full">
+        <h2 class="text-2xl font-bold neon-text mb-6">Report Management</h2>
+        <div id="reports-container" class="space-y-4"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══ MODALS ══ -->
+<!-- Upload Script -->
+<div id="modal-upload" class="modal-overlay">
+  <div class="modal-content max-w-2xl w-full h-full max-h-[95vh] relative flex flex-col">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-surface flex-shrink-0">
+      <h2 id="upload-title" class="text-xl font-bold neon-text">Post Script</h2>
+      <button onclick="closeModal('modal-upload')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    </div>
+    <div class="modal-body flex-1 overflow-y-auto space-y-5 p-5">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Thumbnail (Square)</label>
+        <div id="upload-thumb-area" class="w-full aspect-square bg-black border-2 border-dashed border-primary-custom/30 rounded-custom flex items-center justify-center cursor-pointer overflow-hidden relative">
+          <img id="upload-thumb-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+          <div id="thumb-confirm-overlay" class="absolute inset-0 bg-black/80 flex items-center justify-center gap-4 hidden z-20">
+            <button id="btn-confirm-thumb" class="bg-primary-custom text-white px-4 py-2 rounded-full text-xs font-bold">ATTACH</button>
+            <button id="btn-cancel-thumb" class="bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold">CANCEL</button>
+          </div>
+          <div id="upload-thumb-placeholder" class="text-center p-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto mb-1"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+            <span class="text-xs font-bold">TAP TO UPLOAD THUMBNAIL</span>
+          </div>
+        </div>
+      </div>
+      <div><label class="text-sm font-bold" id="label-post-name">Name Of The Post</label><input type="text" id="upload-name" placeholder="Script Name..."></div>
+      <div><label class="text-sm font-bold">Description</label><textarea id="upload-description" maxlength="500" placeholder="Describe the script..."></textarea></div>
+      <div><label class="text-sm font-bold" id="label-code">Code Box</label><textarea id="upload-code" class="font-mono text-sm bg-black" placeholder="Place your script here..."></textarea></div>
+      <div><label class="text-sm font-bold">Type</label><select id="upload-type"></select></div>
+      <div>
+        <label class="text-sm font-bold">Tags (Max 5) - Press Enter</label>
+        <div id="upload-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
+        <input type="text" id="upload-tag-input" placeholder="Add tag...">
+      </div>
+    </div>
+    <div class="p-4 border-t border-white/10 bg-surface flex-shrink-0">
+      <button id="btn-submit-post" class="w-full bg-black border border-primary-custom text-primary-custom font-bold py-3 text-lg rounded-custom">Publish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Executor -->
+<div id="modal-upload-executor" class="modal-overlay">
+  <div class="modal-content max-w-2xl w-full h-full max-h-[95vh] relative flex flex-col">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-surface flex-shrink-0">
+      <h2 class="text-xl font-bold neon-text">Post Executor</h2>
+      <button onclick="closeModal('modal-upload-executor')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    </div>
+    <div class="modal-body flex-1 overflow-y-auto space-y-6 p-6">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold">Thumbnail (Square)</label>
+        <div id="exec-thumb-area" class="w-full aspect-square bg-black border-2 border-dashed border-primary-custom/40 rounded-custom flex items-center justify-center overflow-hidden relative cursor-pointer">
+          <img id="exec-thumb-preview" class="absolute inset-0 w-full h-full object-cover hidden">
+          <div id="exec-thumb-placeholder" class="text-center opacity-60">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto mb-2"><path d="M16 5h6"></path><path d="M19 2v6"></path><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"></path><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path><circle cx="9" cy="9" r="2"></circle></svg>
+            <span class="text-sm font-bold">TAP TO INSERT THUMBNAIL</span>
+          </div>
+          <div id="exec-thumb-confirm-overlay" class="absolute inset-0 bg-black/80 flex items-center justify-center gap-4 hidden z-20">
+            <button id="btn-confirm-exec-thumb" class="bg-primary-custom text-white px-4 py-2 rounded-full text-xs font-bold">ATTACH</button>
+            <button id="btn-cancel-exec-thumb" class="bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold">CANCEL</button>
+          </div>
+        </div>
+      </div>
+      <div><label class="text-sm font-bold">Executor Name</label><input type="text" id="exec-name" placeholder="Executor Name..."></div>
+      <div><label class="text-sm font-bold">Description</label><textarea id="exec-description" maxlength="500" placeholder="Describe the executor..."></textarea></div>
+      <div><label class="text-sm font-bold">Download Link</label><input type="url" id="exec-link" placeholder="Download Link..."></div>
+      <div><label class="text-sm font-bold">Type</label><select id="exec-type"><option value="Mobile">Mobile</option><option value="PC">PC</option><option value="Free">Free</option><option value="Paid">Paid</option></select></div>
+      <div>
+        <label class="text-sm font-bold">Tags (Max 5) - Press Enter</label>
+        <div id="exec-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
+        <input type="text" id="exec-tag-input" placeholder="Enter tag...">
+      </div>
+    </div>
+    <div class="p-4 border-t border-white/10 bg-surface">
+      <button id="btn-submit-executor" class="w-full bg-primary-custom font-bold py-3 rounded-custom">Publish Executor</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="modal-report" class="modal-overlay">
+  <div class="modal-content max-w-lg w-full relative">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-surface">
+      <h2 class="text-xl font-bold neon-text">Report Post</h2>
+      <button onclick="closeModal('modal-report')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    </div>
+    <div class="modal-body p-6 space-y-4">
+      <div><label class="block text-sm font-bold mb-2">Target User</label><input type="text" id="report-target-user" placeholder="Username..."></div>
+      <div><label class="block text-sm font-bold mb-2">Reason</label><select id="report-reason"><option value="Bullying">Bullying</option><option value="Swearing">Swearing</option><option value="Spamming">Spamming</option><option value="Abusive">Abusive</option><option value="Other">Other</option></select></div>
+      <div><label class="block text-sm font-bold mb-2">Describe The Issue</label><textarea id="report-desc" placeholder="Describe your issue..." class="h-32"></textarea></div>
+    </div>
+    <div class="p-4 border-t border-white/10">
+      <button id="btn-submit-report" class="w-full bg-red-600 py-3 font-bold rounded-custom">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile -->
+<div id="modal-profile-edit" class="modal-overlay">
+  <div class="modal-content max-w-md w-full relative">
+    <div class="p-6 space-y-4 overflow-y-auto max-h-[85vh]">
+      <h2 class="text-xl font-bold neon-text">Customize Profile</h2>
+      <div class="flex flex-col items-center gap-3">
+        <div id="edit-avatar-container" class="relative group cursor-pointer">
+          <img id="edit-avatar-preview" src="" class="w-24 h-24 rounded-full border-2 border-primary-custom object-cover bg-black">
+          <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+          </div>
+        </div>
+        <p class="text-[10px] uppercase font-bold">Tap to change avatar</p>
+      </div>
+      <div><label class="text-sm font-bold">Display Name</label><input type="text" id="edit-display-name"></div>
+      <div><label class="text-sm font-bold">Bio</label><textarea id="edit-bio" placeholder="Tell us about yourself..." class="h-24"></textarea></div>
+      <div><label class="text-sm font-bold">Social Link</label><input type="text" id="edit-social-link" placeholder="Your social link..."></div>
+      <div>
+        <label class="text-sm font-bold">Protect.me (leave blank to keep)</label>
+        <input type="text" id="edit-protect" placeholder="New Protect.me password (10+ chars)">
+      </div>
+      <button id="btn-save-profile" class="w-full bg-primary-custom py-3 font-bold rounded-custom mt-2">Save Profile</button>
+      <button onclick="closeModal('modal-profile-edit')" class="w-full text-xs text-gray-400 py-1">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Profile View -->
+<div id="modal-user-view" class="modal-overlay">
+  <div class="modal-content max-w-md w-full relative">
+    <button class="absolute top-4 right-4 text-gray-400 p-2" onclick="closeModal('modal-user-view')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    <div class="modal-body p-8 space-y-6">
+      <div class="flex flex-col items-center text-center">
+        <img id="user-view-avatar" src="" class="w-24 h-24 rounded-full border-2 border-primary-custom object-cover bg-black mb-4">
+        <h2 id="user-view-name" class="text-2xl font-bold neon-text flex items-center gap-2 justify-center flex-wrap"></h2>
+        <p id="user-view-bio" class="text-sm opacity-70 mt-2 italic"></p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 border-y border-primary-custom/10 py-4">
+        <div class="text-center"><span id="user-view-followers" class="block text-lg font-bold">0</span><span class="text-[10px] uppercase opacity-50">Followers</span></div>
+        <div class="text-center"><span id="user-view-posts" class="block text-lg font-bold">0</span><span class="text-[10px] uppercase opacity-50">Total Posts</span></div>
+      </div>
+      <div class="space-y-2">
+        <button id="btn-user-follow" class="w-full bg-primary-custom font-bold py-3 rounded-custom">Follow User</button>
+        <button id="btn-user-add-friend" class="w-full border border-primary-custom/40 font-bold py-3 rounded-custom">Add Friend</button>
+        <button id="btn-user-report" class="w-full text-red-500 text-xs font-bold py-2">Report Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Script Modal -->
+<div id="modal-view" class="modal-overlay">
+  <div class="modal-content max-w-2xl w-full h-full max-h-[90vh] relative flex flex-col">
+    <button class="absolute top-4 right-4 bg-black/50 rounded-full text-white z-20 p-2" onclick="closeModal('modal-view')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    <div class="modal-body p-0 flex-1 overflow-y-auto">
+      <img id="view-thumb" src="" class="w-full aspect-square object-cover bg-black">
+      <div class="p-6 space-y-6">
+        <div class="flex items-center gap-4">
+          <img id="view-creator-avatar" class="w-12 h-12 rounded-full border-2 border-primary-custom object-cover cursor-pointer">
+          <div class="flex-1">
+            <h2 id="view-title" class="text-3xl font-bold neon-text mb-0 truncate"></h2>
+            <p id="view-creator-name" class="text-white font-bold cursor-pointer flex items-center gap-1 flex-wrap"></p>
+          </div>
+          <div id="view-actions" class="hidden flex gap-2">
+            <button id="btn-edit-post" class="p-2 border border-white/20 rounded-custom"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg></button>
+            <button id="btn-delete-post" class="p-2 border border-red-500/30 text-red-500 rounded-custom"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+          </div>
+        </div>
+        <div class="flex gap-4 border-y border-white/10 py-3">
+          <button id="btn-like-post" class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"></path><path d="M7 10v12"></path></svg><span id="view-likes">0</span></button>
+          <button id="btn-dislike-post" class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"></path><path d="M17 14V2"></path></svg><span id="view-dislikes">0</span></button>
+          <button id="btn-report-post" class="ml-auto text-red-400 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"></path></svg>Report</button>
+        </div>
+        <div class="bg-black/30 p-4 rounded-custom border border-primary-custom/10 space-y-4">
+          <div><span class="block text-xs font-bold uppercase opacity-60">Title:</span><span id="view-title-label" class="text-xl font-bold text-white"></span></div>
+          <div><span class="block text-xs font-bold uppercase opacity-60">Creator:</span><span id="view-creator-label" class="text-md font-bold text-white flex items-center gap-1 flex-wrap"></span></div>
+          <div><span class="block text-xs font-bold uppercase opacity-60">Description:</span><p id="view-description" class="whitespace-pre-wrap text-sm text-gray-200 leading-relaxed"></p></div>
+          <div><span class="block text-xs font-bold uppercase opacity-60">Type:</span><span id="view-type-label" class="text-sm font-bold text-primary-custom"></span></div>
+          <div><span class="block text-xs font-bold uppercase opacity-60">Tags:</span><div id="view-tags" class="flex flex-wrap gap-2 mt-1"></div></div>
+        </div>
+        <div id="view-code-section">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-sm font-bold uppercase tracking-wider">Source Code</h3>
+            <button id="btn-copy-code" class="text-xs bg-surface border border-gray-600 px-3 py-1 rounded-full">Copy</button>
+          </div>
+          <div id="view-code" class="code-box text-primary-custom border-primary-custom/30"></div>
+        </div>
+        <div class="border-t border-primary-custom/20 pt-6">
+          <h3 class="text-lg font-bold neon-text mb-4">Comments</h3>
+          <div id="comment-input-area" class="mb-6 relative">
+            <div id="mention-box"></div>
+            <div class="flex gap-2">
+              <input type="text" id="comment-field" placeholder="Comment (@ to mention)" maxlength="100" class="flex-1">
+              <button id="btn-post-comment" class="bg-primary-custom px-4 py-2 rounded-custom font-bold text-white">POST</button>
+            </div>
+            <p id="comment-cooldown-text" class="text-[10px] mt-1 text-red-500 hidden">Cooldown active...</p>
+          </div>
+          <div id="comment-list" class="space-y-4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div id="modal-confirm-delete" class="modal-overlay">
+  <div class="modal-content max-w-sm w-full">
+    <div class="p-6 space-y-4 text-center">
+      <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </div>
+      <h3 class="text-lg font-black neon-text">Are You Sure?</h3>
+      <p id="confirm-delete-msg" class="text-sm opacity-70">This cannot be undone.</p>
+      <div class="flex gap-3 pt-2">
+        <button id="btn-confirm-delete-no" class="flex-1 border border-primary-custom/30 py-3 font-bold rounded-custom text-sm">Cancel</button>
+        <button id="btn-confirm-delete-yes" class="flex-1 bg-red-600 text-white py-3 font-bold rounded-custom text-sm">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-surface border border-primary-custom text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary-custom"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+  <span id="toast-msg" class="font-bold"></span>
+</div>
+
+<script>
+// ══ CONSTANTS ══
+const DEFAULT_AVATAR = 'https://prod-data.sekai.chat/aiu-asset-image/import/ezgif-10c492a1db218b.gif';
+const DEV_USERNAME = 'LuaLandHub';
+const DEV_PASSWORD = 'shewithepanda';
+const DEV_CROWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#FFD700" stroke="#B8860B" stroke-width="1.5" style="vertical-align:middle;"><path d="M2 19h20v2H2v-2z"/><path d="M4 17L2 7l6 4 4-6 4 6 6-4-2 10H4z"/></svg>`;
+const VERIFIED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+// ══ APP STATE ══
+window.APP = {
+  currentUser: null,
+  isAdmin: false,
+  profile: null,
+  lastPostTime: 0,
+  lastCommentTime: 0,
+};
+
+// UI State
+let currentEditingPostId = null;
+let currentEditingPostTable = null;
+let currentUploadMode = 'posts';
+let pendingThumbnailData = null;
+let pendingThumbnailFile = null;
+let pendingExecutorThumbData = null;
+let pendingExecutorThumbFile = null;
+let isAvatarUpdate = false;
+let isUploadingExecutorThumb = false;
+let pendingAvatarFile = null;
+let currentTags = [];
+let _deleteConfirmCallback = null;
+let _recoveryUsername = null;
+let dbSelectedUser = null;
+
+const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});
+
+// ══ UTILS ══
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.remove('opacity-0','translate-y-10','pointer-events-none');
+  t.classList.add('opacity-100','translate-y-0');
+  setTimeout(()=>{ t.classList.add('opacity-0','translate-y-10','pointer-events-none'); t.classList.remove('opacity-100','translate-y-0'); }, 3000);
+}
+
+function showLoading(msg='Loading...') {
+  const ol = document.getElementById('loading-overlay');
+  ol.querySelector('p').textContent = msg;
+  ol.style.display = 'flex';
+}
+function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function showConfirmDelete(msg, cb) {
+  document.getElementById('confirm-delete-msg').innerHTML = msg;
+  _deleteConfirmCallback = cb;
+  openModal('modal-confirm-delete');
+}
+
+function getUserBadges(username, verified=false) {
+  let b = '';
+  if (username === DEV_USERNAME) b += `<span class="dev-crown-tag">${DEV_CROWN_SVG}DEV</span>`;
+  if (verified) b += `<span class="verified-badge">${VERIFIED_SVG}Verified</span>`;
+  return b;
+}
+
+function playTap() {
+  const el = document.getElementById('sfx-tap');
+  if (el?.src) { el.currentTime=0; el.play().catch(()=>{}); }
+}
+
+// ══ NAVIGATION ══
+function switchTab(targetId) {
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(c=>c.classList.remove('active'));
+  const tab = document.getElementById('tab-'+targetId);
+  if(tab) tab.classList.add('active');
+  const btn = document.querySelector(`.nav-link[data-target="${targetId}"]`);
+  if(btn) btn.classList.add('active');
+  if(targetId==='Require_Scripts') renderFeed();
+  if(targetId==='client_scripts') renderClientFeed();
+  if(targetId==='executors') renderExecutorFeed();
+  if(targetId==='account') renderAccountPage();
+  if(targetId==='reports') renderReports();
+  if(targetId==='friends') { renderFriendsSearch(); updateInboxBadge(); }
+  if(targetId==='notifications') renderNotificationsTab();
+  if(targetId==='database') renderDatabaseTab();
+}
+
+// ══ AUTH — SUPABASE ══
+
+// Safe exact-match fetch — uses POST body instead of URL params to avoid encoding issues
+async function sbGetExact(table, filters) {
+  // Build query string safely using proper URL params
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k,v]) => params.set(k, `eq.${v}`));
+  params.set('select','*');
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params.toString()}`, {
+      headers: SB_HEADERS
+    });
+    if(!r.ok) return [];
+    return await r.json();
+  } catch(e) { console.error('sbGetExact error:', e); return []; }
+}
+
+async function doLogin() {
+  const u = document.getElementById('login-username').value.trim();
+  const p = document.getElementById('login-password').value;
+  if(!u||!p) return showToast("Please fill all fields.");
+
+  showLoading('Logging in...');
+
+  // Developer bypass
+  if(u===DEV_USERNAME && p===DEV_PASSWORD) {
+    let profile = (await sbGetExact('users',{username:DEV_USERNAME}))[0];
+    if(!profile) {
+      profile = await sbPost('users',{username:DEV_USERNAME,password:DEV_PASSWORD,display_name:'LuaLandHub',bio:'Official Developer',avatar_url:DEFAULT_AVATAR,protect_me:'founder',verified:true});
+    }
+    if(!profile) { hideLoading(); return showToast("Dev account setup failed."); }
+    APP.currentUser = DEV_USERNAME;
+    APP.isAdmin = true;
+    APP.profile = profile;
+    saveSession();
+    hideLoading(); initSession();
+    showToast("Developer Terminal Linked.");
+    return;
+  }
+
+  // Fetch user by username first
+  const userRows = await sbGetExact('users',{username:u});
+  if(userRows.length===0) { hideLoading(); return showToast("Account not found. Please register first."); }
+
+  const user = userRows[0];
+  // Check password
+  if(user.password !== p) { hideLoading(); return showToast("Incorrect password."); }
+
+  APP.currentUser = u;
+  APP.isAdmin = false;
+  APP.profile = user;
+  saveSession();
+  hideLoading();
+  initSession();
+  showToast(`Welcome back, ${user.display_name||u}!`);
+}
+
+async function doRegister() {
+  const u = document.getElementById('reg-username').value.trim();
+  const p = document.getElementById('reg-password').value;
+  const r = document.getElementById('reg-protect').value.trim();
+  if(!u||!p||!r) return showToast("All fields required.");
+  if(u.length<8) return showToast("Username must be 8+ characters.");
+  if(p.length<10) return showToast("Password must be 10+ characters.");
+  if(p===u) return showToast("Password cannot match username.");
+  if(r.length<8) return showToast("Protect.me must be 8+ characters.");
+  if(r===u||r===p) return showToast("Protect.me cannot match username or password.");
+
+  showLoading('Creating account...');
+
+  // Check if username taken
+  const existing = await sbGetExact('users',{username:u});
+  if(existing.length>0) { hideLoading(); return showToast("Username already taken."); }
+
+  // Check protect.me taken
+  const protectCheck = await sbGetExact('users',{protect_me:r});
+  if(protectCheck.length>0) { hideLoading(); return showToast("Protect.me already taken."); }
+
+  const newUser = await sbPost('users',{
+    username:u, password:p, display_name:u,
+    bio:'', avatar_url:'', protect_me:r,
+    social_link:'', followers:0, verified:false
+  });
+
+  if(!newUser) { hideLoading(); return showToast("Registration failed. Try again."); }
+
+  APP.currentUser = u;
+  APP.isAdmin = false;
+  APP.profile = newUser;
+  saveSession();
+  hideLoading();
+  initSession();
+  showToast("Account Created: "+u);
+}
+
+async function doForgotVerify() {
+  const u = document.getElementById('forgot-username-main').value.trim();
+  const pm = document.getElementById('forgot-protectme-input').value.trim();
+  if(!u||!pm) return showToast("All fields required.");
+
+  showLoading('Verifying...');
+  const users = await sbGetExact('users',{username:u});
+  hideLoading();
+
+  if(users.length===0) return showToast("User not found.");
+  const stored = (users[0].protect_me||'').toLowerCase().trim();
+  if(pm.toLowerCase().trim()!==stored) return showToast("Protect.me mismatch. Check your password.");
+
+  _recoveryUsername = u;
+  document.getElementById('forgot-step1').classList.add('hidden');
+  document.getElementById('new-password-panel').classList.remove('hidden');
+  showToast("Identity verified! Create new password.");
+}
+
+async function doConfirmNewPassword() {
+  if(!_recoveryUsername) return showToast("Session expired. Try again.");
+  const np = document.getElementById('new-pass-input').value;
+  const cp = document.getElementById('confirm-pass-input').value;
+  if(!np) return showToast("Enter new password.");
+  if(np.length<10) return showToast("Password must be 10+ characters.");
+  if(np!==cp) return showToast("Passwords do not match.");
+
+  showLoading('Resetting password...');
+  // Use URLSearchParams for PATCH filter too
+  const params = new URLSearchParams({username:`eq.${_recoveryUsername}`});
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?${params.toString()}`, {
+      method:'PATCH', headers:SB_HEADERS, body:JSON.stringify({password:np})
+    });
+    hideLoading();
+    if(!r.ok) return showToast("Reset failed. Try again.");
+  } catch(e) { hideLoading(); return showToast("Network error. Try again."); }
+
+  showToast("Password reset! You can now log in.");
+  _recoveryUsername = null;
+  document.getElementById('forgot-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('forgot-step1').classList.remove('hidden');
+  document.getElementById('new-password-panel').classList.add('hidden');
+}
+
+// ══ INIT SESSION ══
+function initSession() {
+  saveSession(); // Always save current state on session init
+  const header = document.querySelector('header');
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+
+  if(APP.currentUser) {
+    header.classList.remove('hidden');
+    document.getElementById('account-logged-out').classList.add('hidden');
+    document.getElementById('account-logged-in').classList.remove('hidden');
+    document.getElementById('header-user-badge').classList.remove('hidden');
+    document.getElementById('header-user-badge').classList.add('flex');
+    document.getElementById('header-username').textContent = APP.profile?.display_name || APP.currentUser;
+
+    document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('hidden'));
+    if(APP.isAdmin) {
+      document.getElementById('nav-reports-btn').classList.remove('hidden');
+      document.getElementById('nav-database-btn').classList.remove('hidden');
+    } else {
+      document.getElementById('nav-reports-btn').classList.add('hidden');
+      document.getElementById('nav-database-btn').classList.add('hidden');
+    }
+    switchTab('Require_Scripts');
+    updateInboxBadge();
+  } else {
+    header.classList.add('hidden');
+    document.getElementById('account-logged-out').classList.remove('hidden');
+    document.getElementById('account-logged-in').classList.add('hidden');
+    document.getElementById('header-user-badge').classList.add('hidden');
+    document.getElementById('tab-account').classList.add('active');
+  }
+}
+
+// ══ RENDER FEEDS ══
+async function renderFeed() {
+  const grid = document.getElementById('feed-grid');
+  grid.innerHTML = '<div class="col-span-full text-center opacity-40 py-8 text-xs">Loading...</div>';
+  const search = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const cat = document.getElementById('category-select')?.value||'All';
+  let q = 'select=*&order=created_at.desc';
+  if(cat!=='All') q+=`&type=eq.${cat}`;
+  const posts = await sbGet('posts',q);
+  grid.innerHTML='';
+  const filtered = posts.filter(p=>p.title.toLowerCase().includes(search));
+  if(filtered.length===0){grid.innerHTML='<div class="col-span-full text-center opacity-40 py-8 text-xs">No scripts found.</div>';return;}
+  filtered.forEach(post=>{
+    const card=document.createElement('div');
+    card.className='card';
+    card.onclick=()=>openViewModal(post,'posts');
+    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${post.creator}</p></div></div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function renderClientFeed() {
+  const grid=document.getElementById('client-feed-grid');
+  if(!grid)return;
+  grid.innerHTML='<div class="col-span-full text-center opacity-40 py-8 text-xs">Loading...</div>';
+  const search=(document.getElementById('client-search-input')?.value||'').toLowerCase();
+  const cat=document.getElementById('client-category-select')?.value||'All';
+  let q='select=*&order=created_at.desc';
+  if(cat!=='All') q+=`&type=eq.${cat}`;
+  const posts=await sbGet('client_posts',q);
+  grid.innerHTML='';
+  const filtered=posts.filter(p=>p.title.toLowerCase().includes(search));
+  if(filtered.length===0){grid.innerHTML='<div class="col-span-full text-center opacity-40 py-8 text-xs">No scripts found.</div>';return;}
+  filtered.forEach(post=>{
+    const card=document.createElement('div');
+    card.className='card';
+    card.onclick=()=>openViewModal(post,'client_posts');
+    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h3 class="font-bold truncate text-sm">${post.title}</h3><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${post.creator}</p></div></div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function renderExecutorFeed() {
+  const grid=document.getElementById('executor-grid');
+  if(!grid)return;
+  grid.innerHTML='<div class="col-span-full text-center opacity-40 py-8 text-xs">Loading...</div>';
+  const search=(document.getElementById('executor-search-input')?.value||'').toLowerCase();
+  const cat=document.getElementById('executor-category-select')?.value||'All';
+  let q='select=*&order=created_at.desc';
+  if(cat!=='All') q+=`&type=eq.${cat}`;
+  const posts=await sbGet('executor_posts',q);
+  grid.innerHTML='';
+  const filtered=posts.filter(p=>p.title.toLowerCase().includes(search));
+  if(filtered.length===0){grid.innerHTML='<div class="col-span-full text-center opacity-40 py-8 text-xs">No executors found.</div>';return;}
+  filtered.forEach(post=>{
+    const card=document.createElement('div');
+    card.className='card';
+    card.onclick=()=>openExecutorView(post);
+    card.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-3"><h4 class="font-bold truncate text-sm">${post.title}</h4><div class="creator-row mt-2"><img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0"><p class="text-[10px] font-bold creator-name-text">${post.creator}</p><span class="text-[9px] text-primary-custom font-bold ml-auto flex-shrink-0">${post.type}</span></div></div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function renderAccountPage() {
+  if(!APP.currentUser) return;
+  const p=APP.profile||{};
+  document.getElementById('profile-name-display').innerHTML=(p.display_name||APP.currentUser)+getUserBadges(APP.currentUser,p.verified);
+  document.getElementById('profile-bio-display').textContent=p.bio||'No bio yet.';
+  document.getElementById('profile-avatar-display').src=p.avatar_url||DEFAULT_AVATAR;
+  document.getElementById('stat-followers').textContent=p.followers||0;
+
+  const friends=await sbGet('friends',`select=*&or=(user_a.eq.${APP.currentUser},user_b.eq.${APP.currentUser})&status=eq.accepted`);
+  document.getElementById('stat-friends').textContent=friends.length;
+
+  const grids={require:document.getElementById('account-require-grid'),client:document.getElementById('account-client-grid'),executor:document.getElementById('account-executor-grid')};
+  Object.values(grids).forEach(g=>g.innerHTML='');
+
+  const [myPosts,myClientPosts,myExecPosts]=await Promise.all([
+    sbGet('posts',`creator=eq.${APP.currentUser}&select=*&order=created_at.desc`),
+    sbGet('client_posts',`creator=eq.${APP.currentUser}&select=*&order=created_at.desc`),
+    sbGet('executor_posts',`creator=eq.${APP.currentUser}&select=*&order=created_at.desc`)
+  ]);
+
+  const makeCard=(post,cb)=>{const c=document.createElement('div');c.className='card';c.onclick=cb;c.innerHTML=`<img src="${post.thumbnail_url||DEFAULT_AVATAR}" class="card-thumb"><div class="p-2"><div class="text-[10px] font-bold truncate">${post.title}</div><div class="text-[8px] opacity-60 mt-1">${new Date(post.created_at).toLocaleDateString()}</div></div>`;return c;};
+
+  myPosts.forEach(p=>grids.require.appendChild(makeCard(p,()=>openViewModal(p,'posts'))));
+  myClientPosts.forEach(p=>grids.client.appendChild(makeCard(p,()=>openViewModal(p,'client_posts'))));
+  myExecPosts.forEach(p=>grids.executor.appendChild(makeCard(p,()=>openExecutorView(p))));
+
+  ['require','client','executor'].forEach(k=>{
+    if(grids[k].children.length===0) grids[k].innerHTML='<div class="col-span-full py-4 text-center opacity-30 text-[10px] uppercase font-bold border border-dashed border-primary-custom/20 rounded-custom">No Data Found</div>';
+  });
+}
+
+// ══ POST SUBMIT ══
+async function submitPost() {
+  const title=document.getElementById('upload-name').value.trim();
+  const desc=document.getElementById('upload-description').value.trim();
+  const code=document.getElementById('upload-code').value.trim();
+  if(!title||!desc||!code) return showToast("Please fill all required fields.");
+  const now=Date.now();
+  if(!currentEditingPostId && now-APP.lastPostTime<60000) return showToast("Wait 1 minute before posting again.");
+
+  showLoading('Publishing...');
+
+  let thumbnailUrl=APP.profile?.avatar_url||DEFAULT_AVATAR;
+  if(pendingThumbnailFile) {
+    const filename=`${APP.currentUser}_${Date.now()}.jpg`;
+    const url=await uploadToStorage('thumbnails',pendingThumbnailFile,filename);
+    if(url) thumbnailUrl=url;
+  } else if(pendingThumbnailData) {
+    thumbnailUrl=pendingThumbnailData;
+  }
+
+  const table=currentUploadMode==='posts'?'posts':'client_posts';
+  const postData={
+    title,description:desc,code,
+    type:document.getElementById('upload-type').value,
+    tags:currentTags,
+    thumbnail_url:thumbnailUrl,
+    creator:APP.currentUser,
+    uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR
+  };
+
+  let result;
+  if(currentEditingPostId) {
+    await sbPatch(table,`id=eq.${currentEditingPostId}`,postData);
+    result=true;
+  } else {
+    result=await sbPost(table,postData);
+  }
+
+  APP.lastPostTime=now;
+  hideLoading();
+  closeModal('modal-upload');
+  pendingThumbnailData=null; pendingThumbnailFile=null;
+  currentTags=[];
+  if(currentUploadMode==='posts') renderFeed(); else renderClientFeed();
+  showToast(currentEditingPostId?"Asset Updated.":"Asset Published.");
+  currentEditingPostId=null;
+}
+
+async function submitExecutorPost() {
+  const name=document.getElementById('exec-name').value.trim();
+  const desc=document.getElementById('exec-description').value.trim();
+  const link=document.getElementById('exec-link').value.trim();
+  if(!name||!desc||!link) return showToast("Please fill all required fields.");
+  const now=Date.now();
+  if(!currentEditingPostId && now-APP.lastPostTime<60000) return showToast("Wait 1 minute before posting again.");
+
+  showLoading('Publishing executor...');
+
+  let thumbnailUrl=APP.profile?.avatar_url||DEFAULT_AVATAR;
+  if(pendingExecutorThumbFile) {
+    const filename=`exec_${APP.currentUser}_${Date.now()}.jpg`;
+    const url=await uploadToStorage('thumbnails',pendingExecutorThumbFile,filename);
+    if(url) thumbnailUrl=url;
+  } else if(pendingExecutorThumbData) {
+    thumbnailUrl=pendingExecutorThumbData;
+  }
+
+  const postData={
+    title:name,description:desc,link,
+    type:document.getElementById('exec-type').value,
+    tags:currentTags,thumbnail_url:thumbnailUrl,
+    creator:APP.currentUser,
+    uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR
+  };
+
+  if(currentEditingPostId) await sbPatch('executor_posts',`id=eq.${currentEditingPostId}`,postData);
+  else await sbPost('executor_posts',postData);
+
+  APP.lastPostTime=now;
+  hideLoading();
+  closeModal('modal-upload-executor');
+  pendingExecutorThumbData=null; pendingExecutorThumbFile=null;
+  currentTags=[];
+  renderExecutorFeed();
+  showToast(currentEditingPostId?"Executor Updated.":"Executor Published.");
+  currentEditingPostId=null;
+}
+
+// ══ VIEW MODAL ══
+async function openViewModal(post, table) {
+  currentEditingPostId=post.id;
+  currentEditingPostTable=table;
+  document.getElementById('view-thumb').src=post.thumbnail_url||DEFAULT_AVATAR;
+  document.getElementById('view-title').textContent=post.title;
+  document.getElementById('view-title-label').textContent=post.title;
+  document.getElementById('view-type-label').textContent=post.type||'';
+  document.getElementById('view-description').textContent=post.description||'';
+  document.getElementById('view-code').textContent=post.code||'';
+  document.getElementById('view-creator-label').innerHTML=post.creator;
+  document.getElementById('view-code-section').classList.remove('hidden');
+
+  const tagCont=document.getElementById('view-tags');
+  tagCont.innerHTML='';
+  (post.tags||[]).forEach(t=>{const s=document.createElement('span');s.className='tag';s.textContent=t;tagCont.appendChild(s);});
+
+  const avatarImg=document.getElementById('view-creator-avatar');
+  avatarImg.src=post.uploader_avatar||DEFAULT_AVATAR;
+  avatarImg.onclick=()=>viewUserProfile(post.creator);
+  document.getElementById('view-creator-name').innerHTML=post.creator;
+  document.getElementById('view-creator-name').onclick=()=>viewUserProfile(post.creator);
+
+  const isOwner=post.creator===APP.currentUser;
+  document.getElementById('view-actions').classList.toggle('hidden',!isOwner&&!APP.isAdmin);
+  document.getElementById('btn-like-post').classList.toggle('hidden',isOwner);
+  document.getElementById('btn-dislike-post').classList.toggle('hidden',isOwner);
+  document.getElementById('btn-report-post').classList.toggle('hidden',isOwner);
+
+  // Load reaction counts
+  const [likes,dislikes]=await Promise.all([
+    sbGet('reactions',`post_id=eq.${post.id}&type=eq.like&select=id`),
+    sbGet('reactions',`post_id=eq.${post.id}&type=eq.dislike&select=id`)
+  ]);
+  document.getElementById('view-likes').textContent=likes.length;
+  document.getElementById('view-dislikes').textContent=dislikes.length;
+
+  renderComments(post.id);
+  openModal('modal-view');
+}
+
+function openExecutorView(post) {
+  currentEditingPostId=post.id;
+  currentEditingPostTable='executor_posts';
+  document.getElementById('view-thumb').src=post.thumbnail_url||DEFAULT_AVATAR;
+  document.getElementById('view-title').textContent=post.title;
+  document.getElementById('view-title-label').textContent=post.title;
+  document.getElementById('view-type-label').textContent=post.type||'';
+  document.getElementById('view-description').innerHTML=`<span>${post.description||''}</span><br><br><a href="${post.link}" target="_blank" class="bg-primary-custom text-white px-6 py-4 rounded-custom inline-block font-bold mt-4">DOWNLOAD LINK</a>`;
+  document.getElementById('view-creator-label').textContent=post.creator;
+  document.getElementById('view-code-section').classList.add('hidden');
+
+  const tagCont=document.getElementById('view-tags');
+  tagCont.innerHTML='';
+  (post.tags||[]).forEach(t=>{const s=document.createElement('span');s.className='tag';s.textContent=t;tagCont.appendChild(s);});
+
+  document.getElementById('view-creator-avatar').src=post.uploader_avatar||DEFAULT_AVATAR;
+  document.getElementById('view-creator-avatar').onclick=()=>viewUserProfile(post.creator);
+  document.getElementById('view-creator-name').textContent=post.creator;
+  document.getElementById('view-creator-name').onclick=()=>viewUserProfile(post.creator);
+
+  const isOwner=post.creator===APP.currentUser;
+  document.getElementById('view-actions').classList.toggle('hidden',!isOwner&&!APP.isAdmin);
+  document.getElementById('btn-like-post').classList.toggle('hidden',isOwner);
+  document.getElementById('btn-dislike-post').classList.toggle('hidden',isOwner);
+  document.getElementById('btn-report-post').classList.toggle('hidden',isOwner);
+
+  renderComments(post.id);
+  openModal('modal-view');
+}
+
+// ══ REACTIONS ══
+async function handlePostVote(type) {
+  if(!APP.currentUser) return showToast("Login required.");
+  const pid=currentEditingPostId;
+  const existing=await sbGet('reactions',`post_id=eq.${pid}&username=eq.${APP.currentUser}&select=id,type`);
+  if(existing.length>0) {
+    if(existing[0].type===type) {
+      await sbDelete('reactions',`id=eq.${existing[0].id}`);
+    } else {
+      await sbPatch('reactions',`id=eq.${existing[0].id}`,{type});
+    }
+  } else {
+    await sbPost('reactions',{post_id:pid,username:APP.currentUser,type});
+  }
+  const [likes,dislikes]=await Promise.all([
+    sbGet('reactions',`post_id=eq.${pid}&type=eq.like&select=id`),
+    sbGet('reactions',`post_id=eq.${pid}&type=eq.dislike&select=id`)
+  ]);
+  document.getElementById('view-likes').textContent=likes.length;
+  document.getElementById('view-dislikes').textContent=dislikes.length;
+}
+
+// ══ COMMENTS ══
+// Track which comments current user has voted on (in-memory per session)
+const commentVotes={};
+
+async function renderComments(postId) {
+  const list=document.getElementById('comment-list');
+  list.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading comments...</div>';
+  const pid=postId||currentEditingPostId;
+  const comments=await sbGet('comments',`post_id=eq.${pid}&select=*&order=created_at.asc`);
+  list.innerHTML='';
+  if(comments.length===0){list.innerHTML='<div class="text-xs opacity-40 text-center py-4">No comments yet. Be first!</div>';return;}
+  comments.forEach(c=>{
+    const item=document.createElement('div');
+    item.className='flex gap-3 items-start border-b border-primary-custom/5 pb-4';
+    item.dataset.commentId=c.id;
+    const isMyComment=c.username===APP.currentUser;
+    const isDevOrOwner=APP.isAdmin||isMyComment;
+    const formatted=(c.text||'').replace(/@(\w+)/g,'<span class="mention-blue">@$1</span>');
+    const myVote=commentVotes[c.id]||null;
+    const likeActive=myVote==='like'?'text-primary-custom font-bold':'opacity-60';
+    const dislikeActive=myVote==='dislike'?'text-red-400 font-bold':'opacity-60';
+    item.innerHTML=`
+      <img src="${c.user_avatar||DEFAULT_AVATAR}" class="w-8 h-8 rounded-full border border-primary-custom/20 object-cover cursor-pointer flex-shrink-0" onclick="viewUserProfile('${c.username}')">
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-xs font-bold neon-text cursor-pointer hover:underline" onclick="viewUserProfile('${c.username}')">${c.username}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] opacity-40">${new Date(c.created_at).toLocaleTimeString()}</span>
+            ${isMyComment?`
+              <button onclick="startEditComment('${c.id}')" title="Edit" class="text-primary-custom opacity-60 hover:opacity-100 p-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>`:''}
+            ${isDevOrOwner?`
+              <button onclick="deleteComment('${c.id}')" title="Delete" class="text-red-400 opacity-60 hover:opacity-100 p-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>`:''}
+          </div>
+        </div>
+        <div id="comment-text-${c.id}">
+          <p class="text-sm text-gray-200 leading-snug comment-display-text">${formatted}</p>
+        </div>
+        <div id="comment-edit-${c.id}" class="hidden mt-1">
+          <div class="flex gap-2">
+            <input type="text" class="comment-edit-input flex-1 text-sm py-1 px-2" style="padding:0.35rem 0.6rem;font-size:13px;" value="${(c.text||'').replace(/"/g,'&quot;')}">
+            <button onclick="saveEditComment('${c.id}')" class="bg-primary-custom text-white text-[10px] px-2 py-1 rounded font-bold flex-shrink-0">Save</button>
+            <button onclick="cancelEditComment('${c.id}')" class="border border-primary-custom/30 text-[10px] px-2 py-1 rounded font-bold flex-shrink-0">Cancel</button>
+          </div>
+        </div>
+        <div class="flex gap-4 mt-2 items-center">
+          <button class="text-[10px] flex items-center gap-1 ${likeActive} ${isMyComment?'pointer-events-none':''}"
+            ${isMyComment?'disabled':''}
+            onclick="voteComment('${c.id}','like',this)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            <span class="vote-count-like">${c.likes||0}</span>
+          </button>
+          <button class="text-[10px] flex items-center gap-1 ${dislikeActive} ${isMyComment?'pointer-events-none':''}"
+            ${isMyComment?'disabled':''}
+            onclick="voteComment('${c.id}','dislike',this)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+            <span class="vote-count-dislike">${c.dislikes||0}</span>
+          </button>
+        </div>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+async function voteComment(commentId, type, btn) {
+  if(!APP.currentUser) return showToast("Login required.");
+  const item=btn.closest('[data-comment-id]');
+  if(!item) return;
+
+  const prevVote=commentVotes[commentId]||null;
+  const comment=(await sbGet('comments',`id=eq.${commentId}&select=likes,dislikes`))[0];
+  if(!comment) return;
+
+  let newLikes=comment.likes||0;
+  let newDislikes=comment.dislikes||0;
+
+  if(prevVote===type){
+    // Same reaction — toggle OFF (remove)
+    if(type==='like') newLikes=Math.max(0,newLikes-1);
+    else newDislikes=Math.max(0,newDislikes-1);
+    commentVotes[commentId]=null;
+  } else {
+    // Remove old reaction if any
+    if(prevVote==='like') newLikes=Math.max(0,newLikes-1);
+    if(prevVote==='dislike') newDislikes=Math.max(0,newDislikes-1);
+    // Add new reaction
+    if(type==='like') newLikes++;
+    else newDislikes++;
+    commentVotes[commentId]=type;
+  }
+
+  await sbPatch('comments',`id=eq.${commentId}`,{likes:newLikes,dislikes:newDislikes});
+
+  // Update UI
+  const likeBtn=item.querySelector('button[onclick*="like"]');
+  const dislikeBtn=item.querySelector('button[onclick*="dislike"]');
+  const likeSpan=item.querySelector('.vote-count-like');
+  const dislikeSpan=item.querySelector('.vote-count-dislike');
+  if(likeSpan) likeSpan.textContent=newLikes;
+  if(dislikeSpan) dislikeSpan.textContent=newDislikes;
+
+  // Update button styles
+  const currentVote=commentVotes[commentId];
+  if(likeBtn){
+    likeBtn.className=likeBtn.className.replace(/text-primary-custom|font-bold|opacity-60/g,'').trim();
+    likeBtn.classList.add(currentVote==='like'?'text-primary-custom':'opacity-60');
+    if(currentVote==='like') likeBtn.classList.add('font-bold');
+  }
+  if(dislikeBtn){
+    dislikeBtn.className=dislikeBtn.className.replace(/text-red-400|font-bold|opacity-60/g,'').trim();
+    dislikeBtn.classList.add(currentVote==='dislike'?'text-red-400':'opacity-60');
+    if(currentVote==='dislike') dislikeBtn.classList.add('font-bold');
+  }
+}
+
+function startEditComment(commentId) {
+  document.getElementById(`comment-text-${commentId}`)?.classList.add('hidden');
+  document.getElementById(`comment-edit-${commentId}`)?.classList.remove('hidden');
+  document.querySelector(`#comment-edit-${commentId} .comment-edit-input`)?.focus();
+}
+
+function cancelEditComment(commentId) {
+  document.getElementById(`comment-text-${commentId}`)?.classList.remove('hidden');
+  document.getElementById(`comment-edit-${commentId}`)?.classList.add('hidden');
+}
+
+async function saveEditComment(commentId) {
+  const input=document.querySelector(`#comment-edit-${commentId} .comment-edit-input`);
+  if(!input)return;
+  const newText=input.value.trim();
+  if(!newText)return showToast("Comment cannot be empty.");
+  await sbPatch('comments',`id=eq.${commentId}`,{text:newText});
+  cancelEditComment(commentId);
+  // Update display text in-place
+  const displayEl=document.querySelector(`#comment-text-${commentId} .comment-display-text`);
+  if(displayEl)displayEl.innerHTML=newText.replace(/@(\w+)/g,'<span class="mention-blue">@$1</span>');
+  showToast("Comment updated.");
+}
+
+async function deleteComment(commentId) {
+  showConfirmDelete('Delete this comment?',async()=>{
+    await sbDelete('comments',`id=eq.${commentId}`);
+    const item=document.querySelector(`[data-comment-id="${commentId}"]`);
+    if(item)item.remove();
+    showToast("Comment deleted.");
+  });
+}
+
+async function submitComment() {
+  const text=document.getElementById('comment-field').value.trim();
+  if(!text) return;
+  if(!APP.currentUser) return showToast("Login required.");
+  const now=Date.now();
+  // 10 second cooldown between comments
+  if(now-APP.lastCommentTime<10000){
+    document.getElementById('comment-cooldown-text').classList.remove('hidden');
+    setTimeout(()=>document.getElementById('comment-cooldown-text').classList.add('hidden'),2000);
+    return;
+  }
+  // Check for duplicate comment spam (same text same post)
+  const recent=await sbGet('comments',`post_id=eq.${currentEditingPostId}&username=eq.${APP.currentUser}&text=eq.${encodeURIComponent(text)}&select=id&limit=1`);
+  if(recent.length>0) return showToast("You already posted this comment.");
+
+  const btn=document.getElementById('btn-post-comment');
+  btn.disabled=true;
+  await sbPost('comments',{
+    post_id:currentEditingPostId,
+    username:APP.currentUser,
+    user_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR,
+    text,likes:0,dislikes:0
+  });
+  btn.disabled=false;
+  APP.lastCommentTime=now;
+  document.getElementById('comment-field').value='';
+  document.getElementById('mention-box').style.display='none';
+  renderComments(currentEditingPostId);
+
+  // Notify post owner
+  const table=currentEditingPostTable||'posts';
+  const postData=(await sbGet(table,`id=eq.${currentEditingPostId}&select=creator`))[0];
+  if(postData?.creator && postData.creator!==APP.currentUser) {
+    await sbPost('notifications',{target_user:postData.creator,from_user:APP.currentUser,type:'comment',post_id:currentEditingPostId});
+  }
+  // Notify mentions
+  const mentions=text.match(/@(\w+)/g)||[];
+  for(const m of mentions){
+    const mentioned=m.slice(1);
+    if(mentioned!==APP.currentUser){
+      await sbPost('notifications',{target_user:mentioned,from_user:APP.currentUser,type:'mention',post_id:currentEditingPostId});
+    }
+  }
+}
+
+// ══ FRIENDS ══
+async function renderFriendsSearch() {
+  // Just show empty state — search is triggered by input
+}
+
+async function sendFriendRequest(username) {
+  if(!APP.currentUser) return showToast("Login required.");
+  const existing=await sbGet('friends',`or=(and(user_a.eq.${APP.currentUser},user_b.eq.${username}),and(user_a.eq.${username},user_b.eq.${APP.currentUser}))&select=id,status`);
+  if(existing.length>0) return showToast(existing[0].status==='accepted'?'Already friends.':'Request already sent.');
+  await sbPost('friends',{user_a:APP.currentUser,user_b:username,status:'pending'});
+  await sbPost('notifications',{target_user:username,from_user:APP.currentUser,type:'friend_request'});
+  showToast(`Friend request sent to ${username}!`);
+  document.getElementById('friend-search').dispatchEvent(new Event('input'));
+}
+
+async function acceptFriendReq(fromUser) {
+  const ok=await sbPatch('friends',`user_a=eq.${fromUser}&user_b=eq.${APP.currentUser}&status=eq.pending`,{status:'accepted'});
+  if(!ok){showToast("Could not accept — request may have expired.");return;}
+  // ✅ Notify sender: accepted (green in inbox)
+  await sbPost('notifications',{
+    target_user: fromUser,
+    from_user: APP.currentUser,
+    type: 'friend_accept'
+  });
+  showToast(`You and ${fromUser} are now friends!`);
+  renderInbox();
+  renderAccountPage();
+}
+
+async function rejectFriendReq(fromUser) {
+  await sbDelete('friends',`user_a=eq.${fromUser}&user_b=eq.${APP.currentUser}&status=eq.pending`);
+  // ✅ Notify sender: rejected (red in inbox)
+  await sbPost('notifications',{
+    target_user: fromUser,
+    from_user: APP.currentUser,
+    type: 'friend_reject'
+  });
+  showToast(`Rejected request from ${fromUser}.`);
+  renderInbox();
+}
+
+async function removeFriend(username) {
+  await sbDelete('friends',`or=(and(user_a.eq.${APP.currentUser},user_b.eq.${username}),and(user_a.eq.${username},user_b.eq.${APP.currentUser}))`);
+  showToast(`Unfriended ${username}.`);
+  renderFriendsList();
+}
+
+async function followUser(username) {
+  if(!APP.currentUser) return showToast("Login required.");
+  const existing=await sbGet('follows',`follower=eq.${APP.currentUser}&following=eq.${username}&select=id`);
+  if(existing.length>0) return showToast("Already following.");
+  await sbPost('follows',{follower:APP.currentUser,following:username});
+  // Increment follower count
+  const targetUser=(await sbGet('users',`username=eq.${username}&select=followers`))[0];
+  if(targetUser) await sbPatch('users',`username=eq.${username}`,{followers:(targetUser.followers||0)+1});
+  await sbPost('notifications',{target_user:username,from_user:APP.currentUser,type:'follow'});
+  showToast(`Now following ${username}.`);
+  document.getElementById('friend-search').dispatchEvent(new Event('input'));
+}
+
+async function unfollowUser(username) {
+  await sbDelete('follows',`follower=eq.${APP.currentUser}&following=eq.${username}`);
+  const targetUser=(await sbGet('users',`username=eq.${username}&select=followers`))[0];
+  if(targetUser) await sbPatch('users',`username=eq.${username}`,{followers:Math.max(0,(targetUser.followers||1)-1)});
+  showToast(`Unfollowed ${username}.`);
+  document.getElementById('friend-search').dispatchEvent(new Event('input'));
+}
+
+async function renderFriendsList() {
+  const list=document.getElementById('friends-list');
+  if(!list||!APP.currentUser) return;
+  list.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading...</div>';
+  const friendRows=await sbGet('friends',`or=(and(user_a.eq.${APP.currentUser},status.eq.accepted),and(user_b.eq.${APP.currentUser},status.eq.accepted))&select=*`);
+  list.innerHTML='';
+  if(friendRows.length===0){list.innerHTML='<p class="text-xs opacity-40 text-center py-4 border border-dashed border-primary-custom/20 rounded-custom">No friends yet.</p>';return;}
+  for(const row of friendRows){
+    const friendName=row.user_a===APP.currentUser?row.user_b:row.user_a;
+    const profile=(await sbGet('users',`username=eq.${friendName}&select=*`))[0]||{};
+    const isFollowing=(await sbGet('follows',`follower=eq.${APP.currentUser}&following=eq.${friendName}&select=id`)).length>0;
+    const div=document.createElement('div');
+    div.className='bg-surface p-3 rounded-custom flex items-center gap-3 border border-primary-custom/10';
+    div.innerHTML=`
+      <img src="${profile.avatar_url||DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border border-primary-custom/30 flex-shrink-0 cursor-pointer" onclick="viewUserProfile('${friendName}')">
+      <div class="flex-1 min-w-0 cursor-pointer" onclick="viewUserProfile('${friendName}')">
+        <span class="font-bold text-sm flex items-center gap-1">${friendName}${getUserBadges(friendName,profile.verified)}</span>
+        <span class="text-[9px] opacity-50">${profile.bio?profile.bio.slice(0,40):'Friend'}</span>
+      </div>
+      <div class="flex flex-col gap-1 flex-shrink-0">
+        ${isFollowing
+          ?`<button class="text-[10px] border border-primary-custom/30 px-2 py-1 rounded font-bold" onclick="unfollowUser('${friendName}')">Unfollow</button>`
+          :`<button class="text-[10px] border border-primary-custom/30 px-2 py-1 rounded font-bold" onclick="followUser('${friendName}')">Follow</button>`}
+        <button class="text-[10px] text-red-400 border border-red-400/30 px-2 py-1 rounded font-bold" onclick="removeFriend('${friendName}')">Unfriend</button>
+      </div>`;
+    list.appendChild(div);
+  }
+}
+
+// ══ INBOX / NOTIFICATIONS ══
+async function updateInboxBadge() {
+  if(!APP.currentUser) return;
+  const unread=await sbGet('notifications',`target_user=eq.${APP.currentUser}&is_read=eq.false&select=id`);
+  const count=unread.length;
+  ['inbox-badge','nav-notif-badge'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.textContent=count;
+    count>0?el.classList.remove('hidden'):el.classList.add('hidden');
+  });
+}
+
+async function renderInbox() {
+  const list=document.getElementById('inbox-list');
+  if(!list||!APP.currentUser)return;
+  list.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading...</div>';
+  // Mark all as read
+  await sbPatch('notifications',`target_user=eq.${APP.currentUser}&is_read=eq.false`,{is_read:true});
+  updateInboxBadge();
+
+  const notifs=await sbGet('notifications',`target_user=eq.${APP.currentUser}&select=*&order=created_at.desc&limit=50`);
+  list.innerHTML='';
+  if(notifs.length===0){list.innerHTML='<p class="text-xs opacity-40 text-center py-8 border border-dashed border-primary-custom/20 rounded-custom">No notifications.</p>';return;}
+
+  for(const n of notifs){
+    const div=document.createElement('div');
+    const typeClass={
+      friend_request:'type-friend-request',
+      follow:'type-follow',
+      comment:'type-comment',
+      mention:'type-mention',
+      friend_accept:'type-friend-accept',
+      friend_reject:'type-friend-reject'
+    }[n.type]||'';
+    let content='';
+    if(n.type==='friend_request'){
+      const existing=await sbGet('friends',
+        `user_a=eq.${n.from_user}&user_b=eq.${APP.currentUser}&status=eq.pending&select=id`
+      );
+      const isPending=existing.length>0;
+      content=`<p class="text-sm font-bold mb-2"><span class="neon-text">${n.from_user}</span> sent you a friend request!</p>
+        ${isPending
+          ?`<div class="flex gap-2 mt-2">
+              <button class="bg-primary-custom text-white text-xs px-3 py-2 rounded-custom font-bold flex items-center gap-1" onclick="acceptFriendReq('${n.from_user}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Accept
+              </button>
+              <button class="bg-red-600/20 text-red-400 border border-red-400/30 text-xs px-3 py-2 rounded-custom font-bold flex items-center gap-1" onclick="rejectFriendReq('${n.from_user}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>Reject
+              </button>
+            </div>`
+          :'<p class="text-[10px] opacity-50 italic mt-1">Already responded.</p>'
+        }`;
+    } else if(n.type==='friend_accept'){
+      // GREEN — they accepted your request
+      content=`<p class="text-sm font-bold" style="color:#22c55e!important;text-shadow:0 0 8px rgba(34,197,94,0.4);">
+        <span style="color:#22c55e!important;">${n.from_user}</span> just accepted your friend request! 🎉
+      </p>`;
+    } else if(n.type==='friend_reject'){
+      // RED — they rejected your request
+      content=`<p class="text-sm font-bold" style="color:#ef4444!important;text-shadow:0 0 8px rgba(239,68,68,0.3);">
+        <span style="color:#ef4444!important;">${n.from_user}</span> rejected your friend request.
+      </p>`;
+    } else if(n.type==='follow'){
+      content=`<p class="text-sm"><span class="neon-text font-bold">${n.from_user}</span> just followed you!</p>`;
+    } else if(n.type==='comment'){
+      content=`<p class="text-sm cursor-pointer hover:underline" onclick="openPostById('${n.post_id}')"><span class="neon-text font-bold">${n.from_user}</span> commented on your post! <span class="text-primary-custom opacity-70 text-[10px]">Tap to view</span></p>`;
+    } else if(n.type==='mention'){
+      content=`<p class="text-sm cursor-pointer hover:underline" onclick="openPostById('${n.post_id}')"><span class="neon-text font-bold">${n.from_user}</span> mentioned you! <span class="text-primary-custom opacity-70 text-[10px]">Tap to view</span></p>`;
+    }
+    const dotColor={
+      friend_request:'bg-purple-500',
+      follow:'bg-blue-500',
+      comment:'bg-green-500',
+      mention:'bg-yellow-500',
+      friend_accept:'bg-green-500',
+      friend_reject:'bg-red-500'
+    }[n.type]||'bg-gray-500';
+    div.className='inbox-item '+typeClass;
+    div.innerHTML=`<div class="flex items-start gap-2"><div class="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2 ${dotColor}"></div><div class="flex-1 min-w-0">${content}<p class="text-[9px] opacity-30 mt-1">${new Date(n.created_at).toLocaleString()}</p></div></div>`;
+    list.appendChild(div);
+  }
+}
+
+async function renderNotificationsTab() {
+  const list=document.getElementById('notif-tab-list');
+  if(!list||!APP.currentUser){if(list)list.innerHTML='<p class="text-xs opacity-40 text-center py-8">Login to see notifications.</p>';return;}
+  list.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading...</div>';
+  const notifs=await sbGet('notifications',`target_user=eq.${APP.currentUser}&select=*&order=created_at.desc&limit=50`);
+  list.innerHTML='';
+  if(notifs.length===0){list.innerHTML='<p class="text-xs opacity-40 text-center py-8 border border-dashed border-primary-custom/20 rounded-custom">No notifications yet.</p>';return;}
+  notifs.forEach(n=>{
+    const div=document.createElement('div');
+    div.className='bg-surface border border-primary-custom/12 rounded-custom p-3';
+    const typeLabel={
+      friend_request:'Friend Request',
+      friend_accept:'Friend Accepted',
+      friend_reject:'Friend Rejected',
+      follow:'Follow',
+      comment:'Comment',
+      mention:'Mention'
+    }[n.type]||n.type;
+    const dotColor={
+      friend_request:'bg-purple-500',
+      friend_accept:'bg-green-500',
+      friend_reject:'bg-red-500',
+      follow:'bg-blue-500',
+      comment:'bg-green-500',
+      mention:'bg-yellow-500'
+    }[n.type]||'bg-gray-500';
+
+    let msgHtml='';
+    if(n.type==='friend_accept'){
+      msgHtml=`<span style="color:#22c55e!important;font-weight:bold;">${n.from_user}</span><span style="color:#22c55e!important;"> just accepted your friend request! 🎉</span>`;
+    } else if(n.type==='friend_reject'){
+      msgHtml=`<span style="color:#ef4444!important;font-weight:bold;">${n.from_user}</span><span style="color:#ef4444!important;"> rejected your friend request.</span>`;
+    } else if(n.type==='friend_request'){
+      msgHtml=`<span class="neon-text font-bold">${n.from_user}</span> sent you a friend request!`;
+    } else if(n.type==='follow'){
+      msgHtml=`<span class="neon-text font-bold">${n.from_user}</span> just followed you!`;
+    } else if(n.type==='comment'){
+      msgHtml=`<span class="neon-text font-bold">${n.from_user}</span> commented on your post!`;
+    } else if(n.type==='mention'){
+      msgHtml=`<span class="neon-text font-bold">${n.from_user}</span> mentioned you!`;
+    }
+
+    div.innerHTML=`<div class="flex items-start gap-2">
+      <div class="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2 ${dotColor}"></div>
+      <div class="flex-1 min-w-0">
+        <span class="text-[9px] font-black uppercase opacity-50">${typeLabel}</span>
+        <p class="text-sm mt-0.5">${msgHtml}</p>
+        <p class="text-[9px] opacity-30 mt-1">${new Date(n.created_at).toLocaleString()}</p>
+      </div>
+    </div>`;
+    list.appendChild(div);
+  });
+}
+
+// ══ VIEW USER PROFILE ══
+async function viewUserProfile(username) {
+  if(username===APP.currentUser){switchTab('account');closeModal('modal-view');closeModal('modal-user-view');return;}
+  const profile=(await sbGet('users',`username=eq.${encodeURIComponent(username)}&select=*`))[0]||{};
+  const totalPosts=[...await sbGet('posts',`creator=eq.${username}&select=id`),...await sbGet('client_posts',`creator=eq.${username}&select=id`),...await sbGet('executor_posts',`creator=eq.${username}&select=id`)].length;
+  const isFollowing=(await sbGet('follows',`follower=eq.${APP.currentUser}&following=eq.${username}&select=id`)).length>0;
+
+  document.getElementById('user-view-avatar').src=profile.avatar_url||DEFAULT_AVATAR;
+  document.getElementById('user-view-name').innerHTML=username+getUserBadges(username,profile.verified);
+  document.getElementById('user-view-bio').textContent=profile.bio||'LuaLand Member';
+  document.getElementById('user-view-followers').textContent=profile.followers||0;
+  document.getElementById('user-view-posts').textContent=totalPosts;
+  document.getElementById('btn-user-follow').textContent=isFollowing?'Following ✓':'Follow User';
+  document.getElementById('btn-user-follow').onclick=()=>{
+    if(isFollowing)unfollowUser(username); else followUser(username);
+    closeModal('modal-user-view');
+  };
+  document.getElementById('btn-user-add-friend').onclick=()=>sendFriendRequest(username);
+  document.getElementById('btn-user-report').onclick=()=>{
+    closeModal('modal-user-view');
+    // Pre-fill target user in report modal
+    document.getElementById('report-target-user').value=username;
+    document.getElementById('report-desc').value='';
+    openModal('modal-report');
+  };
+  openModal('modal-user-view');
+}
+
+async function openPostById(postId) {
+  if(!postId)return;
+  let post=(await sbGet('posts',`id=eq.${postId}&select=*`))[0];
+  let table='posts';
+  if(!post){post=(await sbGet('client_posts',`id=eq.${postId}&select=*`))[0];table='client_posts';}
+  if(!post){post=(await sbGet('executor_posts',`id=eq.${postId}&select=*`))[0];table='executor_posts';}
+  if(!post)return showToast("Post no longer exists.");
+  if(post.link)openExecutorView(post); else openViewModal(post,table);
+}
+
+// ══ REPORTS ══
+async function renderReports() {
+  const cont=document.getElementById('reports-container');
+  if(!cont)return;
+  cont.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading...</div>';
+  const reports=await sbGet('reports','select=*&order=created_at.desc');
+  cont.innerHTML='';
+  if(reports.length===0){cont.innerHTML='<p class="text-xs opacity-40 text-center py-8">No reports.</p>';return;}
+  reports.forEach(r=>{
+    const div=document.createElement('div');
+    div.className='bg-surface border border-red-500/20 p-4 rounded-custom space-y-3';
+    div.innerHTML=`
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="text-red-500 font-bold uppercase text-xs">[${r.reason}]</span>
+          <h4 class="font-bold mt-1">Target: ${r.target||'N/A'}</h4>
+          <p class="text-[10px] opacity-40">Reporter: ${r.reporter}</p>
+          <p class="text-[9px] opacity-30">${new Date(r.created_at).toLocaleString()}</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="bg-primary-custom/20 text-primary-custom px-3 py-1 rounded text-xs font-bold" onclick="openPostById('${r.post_id}')">OPEN</button>
+          <button class="bg-red-600/20 text-red-500 px-3 py-1 rounded text-xs font-bold" onclick="banUserFromReport('${r.target}')">BAN</button>
+          <button class="bg-surface border border-primary-custom/20 px-3 py-1 rounded text-xs font-bold" onclick="resolveReport('${r.id}')">RESOLVE</button>
+        </div>
+      </div>
+      <p class="text-xs opacity-70 italic border-l-2 border-primary-custom/30 pl-2">"${r.description}"</p>
+      <span class="text-[9px] px-2 py-0.5 rounded ${r.status==='open'?'bg-red-500/20 text-red-400':'bg-green-500/20 text-green-400'}">${r.status}</span>`;
+    cont.appendChild(div);
+  });
+}
+
+async function banUserFromReport(username) {
+  if(!username)return;
+  showConfirmDelete(`Ban user <strong>${username}</strong>?`,async()=>{
+    // We mark them in a banned state by adding a special report entry or using a field
+    // For now just resolve all their reports and show toast
+    showToast(`${username} has been flagged for ban. Implement ban field in users table for full ban.`);
+  });
+}
+
+async function resolveReport(reportId) {
+  await sbPatch('reports',`id=eq.${reportId}`,{status:'resolved'});
+  renderReports();
+  showToast("Report resolved.");
+}
+
+// ══ DATABASE TAB ══
+async function renderDatabaseTab() {
+  if(!APP.isAdmin)return;
+  const list=document.getElementById('db-user-list');
+  if(!list)return;
+  list.innerHTML='<div class="text-xs opacity-40 text-center py-4">Loading users...</div>';
+  const q=(document.getElementById('db-search')?.value||'').toLowerCase();
+  const users=await sbGet('users','select=*&order=created_at.desc');
+  const filtered=q?users.filter(u=>u.username.toLowerCase().includes(q)):users;
+  list.innerHTML='';
+
+  const wrapper=document.createElement('div');
+  wrapper.className='flex gap-3';
+
+  const userCol=document.createElement('div');
+  userCol.className='w-1/3 flex-shrink-0 space-y-1 overflow-y-auto max-h-[60vh]';
+
+  filtered.forEach(u=>{
+    const row=document.createElement('div');
+    row.className='db-user-row flex items-center gap-2'+(dbSelectedUser===u.username?' active-row':'');
+    row.innerHTML=`<img src="${u.avatar_url||DEFAULT_AVATAR}" class="w-8 h-8 rounded-full object-cover border border-primary-custom/20 flex-shrink-0"><div class="flex-1 min-w-0"><div class="text-xs font-bold truncate">${u.username}${getUserBadges(u.username,u.verified)}</div></div>`;
+    row.onclick=()=>{dbSelectedUser=u.username;renderDatabaseTab();};
+    userCol.appendChild(row);
+  });
+  wrapper.appendChild(userCol);
+
+  const detailCol=document.createElement('div');
+  detailCol.className='flex-1 overflow-y-auto';
+
+  if(dbSelectedUser){
+    const u=filtered.find(x=>x.username===dbSelectedUser)||users.find(x=>x.username===dbSelectedUser);
+    if(u){
+      const postCounts=await Promise.all([
+        sbGet('posts',`creator=eq.${u.username}&select=id`),
+        sbGet('client_posts',`creator=eq.${u.username}&select=id`),
+        sbGet('executor_posts',`creator=eq.${u.username}&select=id`)
+      ]);
+      const totalPosts=postCounts.reduce((a,b)=>a+b.length,0);
+      detailCol.innerHTML=`
+        <div class="bg-black/30 border border-primary-custom/20 rounded-custom p-4 space-y-4">
+          <div class="flex items-center gap-3">
+            <img src="${u.avatar_url||DEFAULT_AVATAR}" class="w-14 h-14 rounded-full border-2 border-primary-custom object-cover">
+            <div>
+              <div class="font-bold text-sm flex items-center gap-1 flex-wrap">${u.username}${getUserBadges(u.username,u.verified)}</div>
+              <div class="text-[10px] opacity-50">${u.bio||'No bio'}</div>
+              <div class="text-[9px] opacity-40">${totalPosts} posts · ${u.followers||0} followers</div>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs border border-primary-custom/10 rounded-custom p-3 bg-black/20">
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Password:</span><span class="font-mono text-[10px] text-primary-custom select-all">${u.password||'N/A'}</span></div>
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Protect.me:</span><span class="font-mono text-[10px] text-primary-custom select-all">${u.protect_me||'N/A'}</span></div>
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Display Name:</span><span class="text-[10px]">${u.display_name||u.username}</span></div>
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Email:</span><span class="text-[10px]">${u.social_link||'—'}</span></div>
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Verified:</span><span class="text-[10px] font-bold ${u.verified?'text-white':'opacity-40'}">${u.verified?'YES':'NO'}</span></div>
+            <div class="flex justify-between"><span class="opacity-50 font-bold">Joined:</span><span class="text-[10px]">${new Date(u.created_at).toLocaleDateString()}</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="bg-black border border-white/20 text-white py-2 text-xs font-bold rounded-custom" onclick="dbToggleVerify('${u.username}',${u.verified})">${u.verified?'Unverify':'Verify ✓'}</button>
+            <button class="bg-red-900/30 text-red-300 border border-red-500/20 py-2 text-xs font-bold rounded-custom" onclick="dbDeleteAccount('${u.username}')">Delete Account</button>
+          </div>
+        </div>`;
+    }
+  } else {
+    detailCol.innerHTML='<p class="text-xs opacity-40 text-center py-8">Select a user to view details.</p>';
+  }
+
+  wrapper.appendChild(detailCol);
+  list.appendChild(wrapper);
+
+  const dbSearch=document.getElementById('db-search');
+  if(dbSearch&&!dbSearch._listener){
+    dbSearch._listener=true;
+    dbSearch.addEventListener('input',renderDatabaseTab);
+  }
+}
+
+async function dbToggleVerify(username, currentState) {
+  await sbPatch('users',`username=eq.${encodeURIComponent(username)}`,{verified:!currentState});
+  showToast(`${username} is now ${!currentState?'verified':'unverified'}.`);
+  renderDatabaseTab();
+}
+
+async function dbDeleteAccount(username) {
+  if(username===DEV_USERNAME)return showToast("Cannot delete developer account.");
+  showConfirmDelete(`Permanently delete <strong>${username}</strong>?<br><span style="font-size:11px;opacity:0.6;">All posts and data will be erased.</span>`,async()=>{
+    showLoading('Deleting account...');
+    await Promise.all([
+      sbDelete('posts',`creator=eq.${encodeURIComponent(username)}`),
+      sbDelete('client_posts',`creator=eq.${encodeURIComponent(username)}`),
+      sbDelete('executor_posts',`creator=eq.${encodeURIComponent(username)}`),
+      sbDelete('comments',`username=eq.${encodeURIComponent(username)}`),
+      sbDelete('reactions',`username=eq.${encodeURIComponent(username)}`),
+      sbDelete('friends',`or=(user_a.eq.${username},user_b.eq.${username})`),
+      sbDelete('follows',`or=(follower.eq.${username},following.eq.${username})`),
+      sbDelete('notifications',`or=(target_user.eq.${username},from_user.eq.${username})`),
+      sbDelete('reports',`reporter=eq.${encodeURIComponent(username)}`),
+    ]);
+    await sbDelete('users',`username=eq.${encodeURIComponent(username)}`);
+    dbSelectedUser=null;
+    hideLoading();
+    showToast(`Account ${username} permanently deleted.`);
+    renderDatabaseTab();
+  });
+}
+
+// ══ PROFILE SAVE ══
+async function saveProfile() {
+  const newName=document.getElementById('edit-display-name').value.trim();
+  const newBio=document.getElementById('edit-bio').value.trim();
+  const newSocial=document.getElementById('edit-social-link').value.trim();
+  const newProtect=document.getElementById('edit-protect').value.trim();
+  if(!newName)return showToast("Display name required.");
+
+  showLoading('Saving profile...');
+
+  let avatarUrl=APP.profile?.avatar_url||'';
+  if(pendingAvatarFile){
+    const filename=`avatar_${APP.currentUser}_${Date.now()}.jpg`;
+    const url=await uploadToStorage('avatars',pendingAvatarFile,filename);
+    if(url)avatarUrl=url;
+  } else if(pendingThumbnailData&&isAvatarUpdate){
+    avatarUrl=pendingThumbnailData;
+  }
+
+  const updates={display_name:newName,bio:newBio,social_link:newSocial,avatar_url:avatarUrl};
+  if(newProtect&&newProtect.length>=10){
+    updates.protect_me=newProtect;
+  } else if(newProtect&&newProtect.length>0&&newProtect.length<10){
+    hideLoading();
+    return showToast("Protect.me must be 10+ characters.");
+  }
+
+  await sbPatch('users',`username=eq.${APP.currentUser}`,updates);
+  APP.profile={...APP.profile,...updates};
+  document.getElementById('header-username').textContent=newName;
+  closeModal('modal-profile-edit');
+  hideLoading();
+  renderAccountPage();
+  showToast("Profile saved!");
+  pendingThumbnailData=null; pendingAvatarFile=null; isAvatarUpdate=false;
+}
+
+// ══ FILE HANDLING ══
+function handleFileSelect(e) {
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const base64=ev.target.result;
+    if(isAvatarUpdate){
+      document.getElementById('edit-avatar-preview').src=base64;
+      pendingThumbnailData=base64;
+      pendingAvatarFile=file;
+      showToast("Avatar ready — tap Save to apply.");
+    } else if(isUploadingExecutorThumb){
+      const prev=document.getElementById('exec-thumb-preview');
+      prev.src=base64; prev.classList.remove('hidden');
+      document.getElementById('exec-thumb-placeholder').classList.add('hidden');
+      document.getElementById('exec-thumb-confirm-overlay').classList.remove('hidden');
+      pendingExecutorThumbData=base64; pendingExecutorThumbFile=file;
+    } else {
+      const prev=document.getElementById('upload-thumb-preview');
+      prev.src=base64; prev.classList.remove('hidden');
+      document.getElementById('upload-thumb-placeholder').classList.add('hidden');
+      document.getElementById('thumb-confirm-overlay').classList.remove('hidden');
+      pendingThumbnailData=base64; pendingThumbnailFile=file;
+    }
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+// ══ UPLOAD MODAL ══
+function openUploadModal(mode, editId=null) {
+  currentUploadMode=mode; currentEditingPostId=editId;
+  currentTags=[]; renderScriptTags();
+  const typeSelect=document.getElementById('upload-type');
+  typeSelect.innerHTML='';
+  if(mode==='posts'){
+    document.getElementById('upload-title').textContent="Post Script";
+    ['Abilities','Guis','Spawner','Jumpscares'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;typeSelect.appendChild(o);});
+  } else {
+    document.getElementById('upload-title').textContent="Post Client Script";
+    ['Script Games','Universal Script','Admin Scripts','Script Hub'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;typeSelect.appendChild(o);});
+  }
+  if(!editId){
+    pendingThumbnailData=null; pendingThumbnailFile=null;
+    document.getElementById('upload-thumb-preview').classList.add('hidden');
+    document.getElementById('upload-thumb-placeholder').classList.remove('hidden');
+    document.getElementById('thumb-confirm-overlay').classList.add('hidden');
+    document.getElementById('upload-name').value='';
+    document.getElementById('upload-description').value='';
+    document.getElementById('upload-code').value='';
+  }
+  openModal('modal-upload');
+}
+
+function renderScriptTags(){
+  const cont=document.getElementById('upload-tags-container');
+  if(!cont)return;
+  cont.innerHTML='';
+  currentTags.forEach((t,i)=>{
+    const s=document.createElement('span');s.className='tag-pill';
+    s.innerHTML=`${t} <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>`;
+    s.onclick=e=>{e.stopPropagation();currentTags.splice(i,1);renderScriptTags();};
+    cont.appendChild(s);
+  });
+}
+
+function renderExecTags(){
+  const cont=document.getElementById('exec-tags-container');
+  if(!cont)return;
+  cont.innerHTML='';
+  currentTags.forEach((t,i)=>{
+    const s=document.createElement('span');s.className='tag-pill';
+    s.innerHTML=`${t} <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>`;
+    s.onclick=e=>{e.stopPropagation();currentTags.splice(i,1);renderExecTags();};
+    cont.appendChild(s);
+  });
+}
+
+// ══ SETUP ALL LISTENERS ══
+function setupListeners(){
+  // Nav
+  document.querySelectorAll('.nav-link').forEach(btn=>{
+    btn.addEventListener('click',e=>{playTap();switchTab(e.currentTarget.dataset.target);});
+  });
+
+  // Auth
+  document.getElementById('btn-do-login').addEventListener('click',doLogin);
+  document.getElementById('btn-google-login').addEventListener('click',doGoogleLogin);
+  document.getElementById('btn-do-register').addEventListener('click',doRegister);
+  document.getElementById('btn-goto-register').addEventListener('click',()=>{
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.remove('hidden');
+    document.getElementById('forgot-form').classList.add('hidden');
+  });
+  document.getElementById('btn-goto-forgot').addEventListener('click',()=>{
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('forgot-form').classList.remove('hidden');
+    document.getElementById('forgot-step1').classList.remove('hidden');
+    document.getElementById('new-password-panel').classList.add('hidden');
+  });
+  ['btn-back-login-reg','btn-back-login-forgot'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('click',()=>{
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('forgot-form').classList.add('hidden');
+    });
+  });
+  document.getElementById('btn-do-forgot-main').addEventListener('click',doForgotVerify);
+  document.getElementById('btn-confirm-newpass').addEventListener('click',doConfirmNewPassword);
+  document.getElementById('btn-cancel-newpass').addEventListener('click',()=>{
+    document.getElementById('forgot-step1').classList.remove('hidden');
+    document.getElementById('new-password-panel').classList.add('hidden');
+  });
+
+  document.getElementById('btn-logout').addEventListener('click',()=>{
+    APP.currentUser=null; APP.isAdmin=false; APP.profile=null;
+    localStorage.removeItem(SESSION_KEY);
+    initSession();
+    showToast("Logged out.");
+  });
+
+  // Upload
+  document.getElementById('btn-open-upload').addEventListener('click',()=>openUploadModal('posts'));
+  document.getElementById('btn-open-client-upload').addEventListener('click',()=>openUploadModal('client_posts'));
+  document.getElementById('btn-open-executor-upload').addEventListener('click',()=>{currentTags=[];renderExecTags();pendingExecutorThumbData=null;pendingExecutorThumbFile=null;document.getElementById('exec-thumb-preview').classList.add('hidden');document.getElementById('exec-thumb-placeholder').classList.remove('hidden');openModal('modal-upload-executor');});
+
+  document.getElementById('upload-thumb-area').addEventListener('click',()=>{isAvatarUpdate=false;isUploadingExecutorThumb=false;document.getElementById('hidden-input').click();});
+  document.getElementById('exec-thumb-area').addEventListener('click',()=>{isUploadingExecutorThumb=true;isAvatarUpdate=false;document.getElementById('hidden-input').click();});
+
+  document.getElementById('btn-confirm-thumb').addEventListener('click',e=>{e.stopPropagation();document.getElementById('thumb-confirm-overlay').classList.add('hidden');showToast("Asset Attached.");});
+  document.getElementById('btn-cancel-thumb').addEventListener('click',e=>{e.stopPropagation();document.getElementById('thumb-confirm-overlay').classList.add('hidden');document.getElementById('upload-thumb-preview').classList.add('hidden');document.getElementById('upload-thumb-placeholder').classList.remove('hidden');pendingThumbnailData=null;pendingThumbnailFile=null;});
+  document.getElementById('btn-confirm-exec-thumb').addEventListener('click',e=>{e.stopPropagation();document.getElementById('exec-thumb-confirm-overlay').classList.add('hidden');showToast("Asset Attached.");});
+  document.getElementById('btn-cancel-exec-thumb').addEventListener('click',e=>{e.stopPropagation();document.getElementById('exec-thumb-confirm-overlay').classList.add('hidden');document.getElementById('exec-thumb-preview').classList.add('hidden');document.getElementById('exec-thumb-placeholder').classList.remove('hidden');pendingExecutorThumbData=null;pendingExecutorThumbFile=null;});
+
+  document.getElementById('upload-tag-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();if(v&&currentTags.length<5){currentTags.push(v);renderScriptTags();e.target.value='';};}});
+  document.getElementById('exec-tag-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value.trim();if(v&&currentTags.length<5){currentTags.push(v);renderExecTags();e.target.value='';};}});
+
+  document.getElementById('btn-submit-post').addEventListener('click',submitPost);
+  document.getElementById('btn-submit-executor').addEventListener('click',submitExecutorPost);
+
+  // Search filters
+  document.getElementById('search-input').addEventListener('input',renderFeed);
+  document.getElementById('category-select').addEventListener('change',renderFeed);
+  document.getElementById('client-search-input').addEventListener('input',renderClientFeed);
+  document.getElementById('client-category-select').addEventListener('change',renderClientFeed);
+  document.getElementById('executor-search-input').addEventListener('input',renderExecutorFeed);
+  document.getElementById('executor-category-select').addEventListener('change',renderExecutorFeed);
+
+  // Comments + mention box
+  document.getElementById('btn-post-comment').addEventListener('click',submitComment);
+  document.getElementById('comment-field').addEventListener('input',async e=>{
+    const v=e.target.value;
+    const mb=document.getElementById('mention-box');
+    const atIdx=v.lastIndexOf('@');
+    if(atIdx===-1){mb.style.display='none';return;}
+    const query=v.slice(atIdx+1);
+    // Fetch commenters on this post + post creator
+    const [comments,postRows]=await Promise.all([
+      sbGet('comments',`post_id=eq.${currentEditingPostId}&select=username`),
+      sbGet(currentEditingPostTable||'posts',`id=eq.${currentEditingPostId}&select=creator`)
+    ]);
+    const userSet=new Set();
+    comments.forEach(c=>{if(c.username!==APP.currentUser)userSet.add(c.username);});
+    if(postRows[0]?.creator&&postRows[0].creator!==APP.currentUser)userSet.add(postRows[0].creator);
+    const filtered=[...userSet].filter(u=>u.toLowerCase().includes(query.toLowerCase()));
+    if(filtered.length===0){mb.style.display='none';return;}
+    mb.innerHTML='';
+    mb.style.display='block';
+    filtered.forEach(username=>{
+      const item=document.createElement('div');
+      item.className='mention-item';
+      item.textContent='@'+username;
+      item.addEventListener('mousedown',ev=>{
+        ev.preventDefault();
+        const field=document.getElementById('comment-field');
+        field.value=field.value.slice(0,atIdx)+'@'+username+' ';
+        mb.style.display='none';
+        field.focus();
+      });
+      mb.appendChild(item);
+    });
+  });
+
+  // Post reactions
+  document.getElementById('btn-like-post').addEventListener('click',()=>handlePostVote('like'));
+  document.getElementById('btn-dislike-post').addEventListener('click',()=>handlePostVote('dislike'));
+  document.getElementById('btn-report-post').addEventListener('click',()=>openModal('modal-report'));
+
+  // Post edit/delete
+  document.getElementById('btn-edit-post').addEventListener('click',async()=>{
+    if(!currentEditingPostId||!currentEditingPostTable) return;
+    showLoading('Loading post data...');
+
+    // Fetch the actual post data fresh from Supabase
+    const rows = await sbGet(currentEditingPostTable, `id=eq.${currentEditingPostId}&select=*`);
+    hideLoading();
+    if(!rows||rows.length===0) return showToast("Could not load post data.");
+    const post = rows[0];
+
+    closeModal('modal-view');
+
+    if(currentEditingPostTable==='executor_posts'){
+      // Fill executor modal
+      currentTags=[...(post.tags||[])];
+      renderExecTags();
+      document.getElementById('exec-name').value = post.title||'';
+      document.getElementById('exec-description').value = post.description||'';
+      document.getElementById('exec-link').value = post.link||'';
+      // Set type dropdown
+      const execType = document.getElementById('exec-type');
+      if(execType) execType.value = post.type||'Mobile';
+      // Show thumbnail
+      if(post.thumbnail_url){
+        const prev = document.getElementById('exec-thumb-preview');
+        prev.src = post.thumbnail_url;
+        prev.classList.remove('hidden');
+        document.getElementById('exec-thumb-placeholder').classList.add('hidden');
+        pendingExecutorThumbData = post.thumbnail_url;
+        pendingExecutorThumbFile = null;
+      } else {
+        document.getElementById('exec-thumb-preview').classList.add('hidden');
+        document.getElementById('exec-thumb-placeholder').classList.remove('hidden');
+        pendingExecutorThumbData = null;
+        pendingExecutorThumbFile = null;
+      }
+      document.getElementById('exec-thumb-confirm-overlay').classList.add('hidden');
+      openModal('modal-upload-executor');
+
+    } else {
+      // Fill script modal (posts or client_posts)
+      currentUploadMode = currentEditingPostTable;
+      currentTags = [...(post.tags||[])];
+
+      // Set up type options first
+      const typeSelect = document.getElementById('upload-type');
+      typeSelect.innerHTML='';
+      if(currentEditingPostTable==='posts'){
+        document.getElementById('upload-title').textContent="Edit Script";
+        ['Abilities','Guis','Spawner','Jumpscares'].forEach(c=>{
+          const o=document.createElement('option'); o.value=c; o.textContent=c; typeSelect.appendChild(o);
+        });
+      } else {
+        document.getElementById('upload-title').textContent="Edit Client Script";
+        ['Script Games','Universal Script','Admin Scripts','Script Hub'].forEach(c=>{
+          const o=document.createElement('option'); o.value=c; o.textContent=c; typeSelect.appendChild(o);
+        });
+      }
+
+      // Fill all fields
+      document.getElementById('upload-name').value = post.title||'';
+      document.getElementById('upload-description').value = post.description||'';
+      document.getElementById('upload-code').value = post.code||'';
+      typeSelect.value = post.type||typeSelect.options[0]?.value||'';
+      renderScriptTags();
+
+      // Show thumbnail
+      if(post.thumbnail_url){
+        const prev = document.getElementById('upload-thumb-preview');
+        prev.src = post.thumbnail_url;
+        prev.classList.remove('hidden');
+        document.getElementById('upload-thumb-placeholder').classList.add('hidden');
+        pendingThumbnailData = post.thumbnail_url;
+        pendingThumbnailFile = null;
+      } else {
+        document.getElementById('upload-thumb-preview').classList.add('hidden');
+        document.getElementById('upload-thumb-placeholder').classList.remove('hidden');
+        pendingThumbnailData = null;
+        pendingThumbnailFile = null;
+      }
+      document.getElementById('thumb-confirm-overlay').classList.add('hidden');
+
+      openModal('modal-upload');
+    }
+  });
+  document.getElementById('btn-delete-post').addEventListener('click',()=>{
+    showConfirmDelete('Delete this post permanently?',async()=>{
+      showLoading('Deleting...');
+      await sbDelete(currentEditingPostTable||'posts',`id=eq.${currentEditingPostId}`);
+      hideLoading(); closeModal('modal-view');
+      renderFeed(); renderClientFeed(); renderExecutorFeed();
+      showToast("Post deleted.");
+    });
+  });
+
+  // Copy code
+  document.getElementById('btn-copy-code').addEventListener('click',()=>{
+    const code=document.getElementById('view-code').textContent;
+    navigator.clipboard.writeText(code).then(()=>showToast("Code copied.")).catch(()=>showToast("Copy failed."));
+  });
+
+  // Report submit
+  document.getElementById('btn-submit-report').addEventListener('click',async()=>{
+    const target=document.getElementById('report-target-user').value.trim();
+    const reason=document.getElementById('report-reason').value;
+    const desc=document.getElementById('report-desc').value;
+    if(!target||!desc)return showToast("Fill all fields.");
+    await sbPost('reports',{post_id:currentEditingPostId,reporter:APP.currentUser,target,reason,description:desc,status:'open'});
+    closeModal('modal-report');
+    showToast("Report submitted.");
+  });
+
+  // Profile edit
+  document.getElementById('btn-edit-profile').addEventListener('click',()=>{
+    document.getElementById('edit-display-name').value=APP.profile?.display_name||APP.currentUser;
+    document.getElementById('edit-bio').value=APP.profile?.bio||'';
+    document.getElementById('edit-social-link').value=APP.profile?.social_link||'';
+    document.getElementById('edit-avatar-preview').src=APP.profile?.avatar_url||DEFAULT_AVATAR;
+    document.getElementById('edit-protect').value='';
+    pendingThumbnailData=null; pendingAvatarFile=null;
+    openModal('modal-profile-edit');
+  });
+  document.getElementById('edit-avatar-container').addEventListener('click',()=>{isAvatarUpdate=true;isUploadingExecutorThumb=false;document.getElementById('hidden-input').click();});
+  document.getElementById('btn-save-profile').addEventListener('click',saveProfile);
+
+  // Friends sub-tabs
+  document.querySelectorAll('.friends-sub-tab').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      const sub=e.currentTarget.dataset.sub;
+      document.querySelectorAll('.friends-sub-tab').forEach(b=>b.classList.remove('active-sub'));
+      e.currentTarget.classList.add('active-sub');
+      document.querySelectorAll('.friends-sub-content').forEach(c=>{c.classList.remove('active-sub');c.classList.add('hidden');});
+      const panel=document.getElementById('friends-sub-'+sub);
+      if(panel){panel.classList.remove('hidden');panel.classList.add('active-sub');}
+      if(sub==='inbox')renderInbox();
+      if(sub==='mylist')renderFriendsList();
+    });
+  });
+
+  // Friend search - debounced to prevent duplicates
+  let _friendSearchTimer=null;
+  let _friendSearchId=0;
+  document.getElementById('friend-search').addEventListener('input',async e=>{
+    clearTimeout(_friendSearchTimer);
+    const q=e.target.value.trim().toLowerCase();
+    const res=document.getElementById('users-search-results');
+    res.innerHTML='';
+    if(!q)return;
+    res.innerHTML='<div class="text-xs opacity-40 text-center py-3">Searching...</div>';
+    const searchId=++_friendSearchId;
+    _friendSearchTimer=setTimeout(async()=>{
+      if(searchId!==_friendSearchId)return; // stale search
+      const users=await sbGet('users',`username=ilike.*${encodeURIComponent(q)}*&select=*&limit=10`);
+      if(searchId!==_friendSearchId)return; // another search started
+      const filtered=users.filter(u=>u.username!==APP.currentUser);
+      res.innerHTML='';
+      if(filtered.length===0){res.innerHTML='<p class="text-xs opacity-50 text-center py-4">No users found.</p>';return;}
+      // Fetch all friend/follow statuses in parallel
+      const [friendData,followData]=await Promise.all([
+        sbGet('friends',`or=(user_a.eq.${APP.currentUser},user_b.eq.${APP.currentUser})&select=user_a,user_b,status`),
+        sbGet('follows',`follower=eq.${APP.currentUser}&select=following`)
+      ]);
+      const friendSet=new Set(friendData.filter(f=>f.status==='accepted').map(f=>f.user_a===APP.currentUser?f.user_b:f.user_a));
+      const pendingSet=new Set(friendData.filter(f=>f.status==='pending'&&f.user_a===APP.currentUser).map(f=>f.user_b));
+      const followSet=new Set(followData.map(f=>f.following));
+      filtered.forEach(u=>{
+        const isFriend=friendSet.has(u.username);
+        const isPending=pendingSet.has(u.username);
+        const isFollowing=followSet.has(u.username);
+        const div=document.createElement('div');
+        div.className='bg-surface p-3 rounded-custom flex items-center gap-3 border border-primary-custom/10';
+        div.innerHTML=`
+          <img src="${u.avatar_url||DEFAULT_AVATAR}" class="w-10 h-10 rounded-full object-cover border border-primary-custom/30 cursor-pointer flex-shrink-0" onclick="viewUserProfile('${u.username}')">
+          <div class="flex-1 min-w-0"><span class="font-bold text-sm flex items-center gap-1 flex-wrap">${u.username}${getUserBadges(u.username,u.verified)}</span><span class="text-[9px] opacity-50">${u.bio?u.bio.slice(0,40):'LuaLand User'}</span></div>
+          <div class="flex flex-col gap-1 flex-shrink-0">
+            ${isFriend
+              ?`<button class="text-[10px] text-red-400 border border-red-400/30 px-2 py-1 rounded font-bold" onclick="removeFriend('${u.username}')">Unfriend</button>`
+              :isPending
+                ?`<button class="text-[10px] border border-primary-custom/30 px-2 py-1 rounded font-bold opacity-50" disabled>Pending...</button>`
+                :`<button class="text-[10px] bg-primary-custom text-white px-2 py-1 rounded font-bold" onclick="sendFriendRequest('${u.username}')">Add Friend</button>`
+            }
+            ${isFollowing
+              ?`<button class="text-[10px] border border-primary-custom/30 px-2 py-1 rounded font-bold" onclick="unfollowUser('${u.username}')">Unfollow</button>`
+              :`<button class="text-[10px] border border-primary-custom/30 px-2 py-1 rounded font-bold" onclick="followUser('${u.username}')">Follow</button>`
+            }
+          </div>`;
+        res.appendChild(div);
+      });
+    },400);
+  });
+
+  // Confirm delete modal
+  document.getElementById('btn-confirm-delete-no').addEventListener('click',()=>{_deleteConfirmCallback=null;closeModal('modal-confirm-delete');});
+  document.getElementById('btn-confirm-delete-yes').addEventListener('click',()=>{closeModal('modal-confirm-delete');if(typeof _deleteConfirmCallback==='function'){_deleteConfirmCallback();_deleteConfirmCallback=null;}});
+
+  // File input
+  document.getElementById('hidden-input').addEventListener('change',handleFileSelect);
+
+  // BGM
+  const bgm=document.getElementById('music-bgm');
+  if(bgm?.src){const play=()=>bgm.play().catch(()=>document.addEventListener('touchstart',play,{once:true}));play();}
+}
+
+// ══ GOOGLE OAUTH ══
+const GOOGLE_CLIENT_ID = '21629672769-4q89pviset49rir1l06ni2maturjol6d.apps.googleusercontent.com';
+
+async function doGoogleLogin() {
+  showLoading('Opening Google login...');
+  // Build Google OAuth URL through Supabase
+  const redirectUrl = window.location.href.split('?')[0]; // current page URL
+  const params = new URLSearchParams({
+    provider: 'google',
+    redirect_to: redirectUrl
+  });
+  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params.toString()}`;
+  // Open in same tab — Supabase will redirect back after login
+  window.location.href = authUrl;
+}
+
+async function handleGoogleCallback() {
+  // Check if we're returning from Google OAuth (hash fragment)
+  const hash = window.location.hash;
+  const search = window.location.search;
+
+  // Supabase returns access_token in hash or code in search params
+  if (hash.includes('access_token') || search.includes('code=')) {
+    showLoading('Completing Google login...');
+    try {
+      // Extract token from hash
+      let accessToken = null;
+      if (hash.includes('access_token')) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        accessToken = hashParams.get('access_token');
+      }
+
+      if (!accessToken) { hideLoading(); return; }
+
+      // Get user info from Supabase using the token
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      if (!r.ok) { hideLoading(); showToast("Google login failed. Try again."); return; }
+      const googleUser = await r.json();
+
+      const email = googleUser.email;
+      const googleName = googleUser.user_metadata?.full_name || googleUser.user_metadata?.name || email.split('@')[0];
+      const googleAvatar = googleUser.user_metadata?.avatar_url || googleUser.user_metadata?.picture || '';
+
+      // Clean URL — remove token from address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Check if user already exists in our users table by email
+      const existingByEmail = await sbGet('users', `social_link=eq.${encodeURIComponent(email)}&select=*`);
+
+      if (existingByEmail.length > 0) {
+        // Already registered — log them in
+        const user = existingByEmail[0];
+        APP.currentUser = user.username;
+        APP.isAdmin = (user.username === DEV_USERNAME);
+        APP.profile = user;
+        // Update avatar if changed
+        if (googleAvatar && googleAvatar !== user.avatar_url) {
+          await sbPatch('users', `username=eq.${user.username}`, { avatar_url: googleAvatar });
+          APP.profile.avatar_url = googleAvatar;
+        }
+        saveSession();
+        hideLoading();
+        initSession();
+        showToast(`Welcome back, ${user.display_name || user.username}!`);
+      } else {
+        // New Google user — create account automatically
+        // Generate username from Google name (remove spaces, add random suffix)
+        let baseUsername = googleName.replace(/\s+/g, '').toLowerCase();
+        if (baseUsername.length < 8) baseUsername = baseUsername + Math.random().toString(36).slice(2, 8);
+        baseUsername = baseUsername.slice(0, 20);
+
+        // Make sure username is unique
+        let finalUsername = baseUsername;
+        let counter = 1;
+        while ((await sbGetExact('users', {username: finalUsername})).length > 0) {
+          finalUsername = baseUsername + counter;
+          counter++;
+        }
+
+        // Auto-generate protect.me
+        const autoProtect = 'google_' + Math.random().toString(36).slice(2, 12);
+
+        const newUser = await sbPost('users', {
+          username: finalUsername,
+          password: 'google_oauth_' + Math.random().toString(36).slice(2),
+          display_name: googleName,
+          bio: '',
+          avatar_url: googleAvatar,
+          protect_me: autoProtect,
+          social_link: email, // store email in social_link for re-login
+          followers: 0,
+          verified: false
+        });
+
+        if (!newUser) { hideLoading(); showToast("Account creation failed. Try again."); return; }
+
+        APP.currentUser = finalUsername;
+        APP.isAdmin = false;
+        APP.profile = newUser;
+        saveSession();
+        hideLoading();
+        initSession();
+        showToast(`Welcome to LuaLand, ${googleName}! Your username: ${finalUsername}`);
+      }
+    } catch(e) {
+      console.error('Google callback error:', e);
+      hideLoading();
+      showToast("Google login error. Try again.");
+    }
+  }
+}
+const SESSION_KEY='lualand_session';
+function saveSession(){
+  if(APP.currentUser){
+    localStorage.setItem(SESSION_KEY,JSON.stringify({
+      currentUser:APP.currentUser,
+      isAdmin:APP.isAdmin,
+      profile:APP.profile
+    }));
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+function loadSession(){
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);
+    if(!raw) return false;
+    const s=JSON.parse(raw);
+    if(!s?.currentUser) return false;
+    APP.currentUser=s.currentUser;
+    APP.isAdmin=s.isAdmin||false;
+    APP.profile=s.profile||null;
+    return true;
+  }catch(e){return false;}
+}
+
+// ══ DESKTOP GATE ══
+function isDesktopSite(){
+  // Check if user agent is desktop OR if user has forced desktop mode
+  const ua=navigator.userAgent;
+  const isMobileUA=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  // Also check window width — desktop site on mobile typically gives wider viewport
+  const isWideEnough=window.innerWidth>=900;
+  return !isMobileUA || isWideEnough;
+}
+
+function showDesktopGate(){
+  const gate=document.getElementById('desktop-gate');
+  if(gate) gate.style.display='flex';
+  // Poll every second — if they switch to desktop site, viewport width will change
+  const poll=setInterval(()=>{
+    if(isDesktopSite()){
+      clearInterval(poll);
+      if(gate) gate.style.display='none';
+      document.getElementById('loading-overlay').style.display='flex';
+      // Short delay then init
+      setTimeout(()=>actualInit(),300);
+    }
+  },800);
+}
+
+async function actualInit(){
+  setupListeners();
+  // ✅ Check if returning from Google OAuth first
+  await handleGoogleCallback();
+  if(APP.currentUser) return; // Google login handled it
+  // Restore session from localStorage
+  if(loadSession()){
+    // Verify session still valid with Supabase
+    showLoading('Restoring session...');
+    const users=await sbGetExact('users',{username:APP.currentUser});
+    if(users.length>0){
+      APP.profile=users[0];
+      APP.isAdmin=(APP.currentUser===DEV_USERNAME);
+      saveSession();
+      hideLoading();
+      initSession();
+      showToast(`Welcome back, ${APP.profile.display_name||APP.currentUser}!`);
+    } else {
+      // Session invalid — clear it
+      APP.currentUser=null; APP.isAdmin=false; APP.profile=null;
+      localStorage.removeItem(SESSION_KEY);
+      hideLoading();
+      initSession();
+    }
+  } else {
+    hideLoading();
+    initSession();
+  }
+}
+
+// ══ INIT ══
+async function initApp(){
+  showLoading('LuaLand.RSL');
+  // Small delay for DOM
+  await new Promise(r=>setTimeout(r,200));
+  hideLoading();
+
+  if(!isDesktopSite()){
+    showDesktopGate();
+  } else {
+    await actualInit();
+  }
+}
+
+document.addEventListener('DOMContentLoaded',initApp);
+</script>
+</body>
+</html>
