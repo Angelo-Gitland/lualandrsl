@@ -464,13 +464,14 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
       </div>
       <div><label class="text-sm font-bold" id="label-post-name">Name Of The Post</label><input type="text" id="upload-name" placeholder="Script Name..."></div>
-      <!-- Creator field — pre-filled with username, fully editable -->
-      <div>
-        <label class="text-sm font-bold">Creator
-          <span style="font-size:10px;font-weight:400;opacity:0.5;margin-left:4px;">(editable)</span>
+      <!-- Creator field - always visible, pre-filled, editable -->
+      <div style="border:1px solid rgba(176,38,255,0.3);border-radius:12px;padding:12px;background:rgba(176,38,255,0.05);">
+        <label class="text-sm font-bold" style="color:var(--primary-color)!important;display:block;margin-bottom:6px;">
+          Creator
+          <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— who made this script?</span>
         </label>
-        <input type="text" id="upload-script-creator" placeholder="Creator name...">
-        <p class="text-[9px] opacity-40 mt-1 px-1">Auto-filled with your username — change it if someone else made this script.</p>
+        <input type="text" id="upload-script-creator" placeholder="Creator name..." style="margin-bottom:4px;">
+        <p style="font-size:9px;opacity:0.45;padding:0 4px;color:var(--primary-color)!important;">Pre-filled with your name. Change it if someone else made this script.</p>
       </div>
       <div><label class="text-sm font-bold">Description</label><textarea id="upload-description" maxlength="500" placeholder="Describe the script..."></textarea></div>
       <div><label class="text-sm font-bold" id="label-code">Code Box</label><textarea id="upload-code" class="font-mono text-sm bg-black" placeholder="Place your script here..."></textarea></div>
@@ -510,10 +511,13 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
       </div>
       <div><label class="text-sm font-bold">Executor Name</label><input type="text" id="exec-name" placeholder="Executor Name..."></div>
-      <div>
-        <label class="text-sm font-bold">Creator <span style="font-size:10px;font-weight:400;opacity:0.5;margin-left:4px;">(editable)</span></label>
-        <input type="text" id="exec-script-creator" placeholder="Creator name...">
-        <p class="text-[9px] opacity-40 mt-1 px-1">Auto-filled with your username — change it if someone else made this.</p>
+      <div style="border:1px solid rgba(176,38,255,0.3);border-radius:12px;padding:12px;background:rgba(176,38,255,0.05);">
+        <label class="text-sm font-bold" style="color:var(--primary-color)!important;display:block;margin-bottom:6px;">
+          Creator
+          <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— who made this executor?</span>
+        </label>
+        <input type="text" id="exec-script-creator" placeholder="Creator name..." style="margin-bottom:4px;">
+        <p style="font-size:9px;opacity:0.45;padding:0 4px;color:var(--primary-color)!important;">Pre-filled with your name. Change it if someone else made this.</p>
       </div>
       <div><label class="text-sm font-bold">Description</label><textarea id="exec-description" maxlength="500" placeholder="Describe the executor..."></textarea></div>
       <div><label class="text-sm font-bold">Download Link</label><input type="url" id="exec-link" placeholder="Download Link..."></div>
@@ -1046,7 +1050,6 @@ async function submitPost() {
   const title=document.getElementById('upload-name').value.trim();
   const desc=document.getElementById('upload-description').value.trim();
   const code=document.getElementById('upload-code').value.trim();
-  // script_creator is OPTIONAL — who made the script (different from uploader)
   const scriptCreator=document.getElementById('upload-script-creator')?.value.trim()||'';
   if(!title||!desc||!code) return showToast("Please fill all required fields.");
   const now=Date.now();
@@ -1064,24 +1067,30 @@ async function submitPost() {
   }
 
   const table=currentUploadMode==='posts'?'posts':'client_posts';
-  const postData={
-    title,description:desc,code,
-    type:document.getElementById('upload-type').value,
-    tags:currentTags,
-    thumbnail_url:thumbnailUrl,
-    // uploader = the person who posted it (always current user)
-    creator:APP.currentUser,
-    // script_creator = who actually made the script (optional, user-entered)
-    uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR,
-    script_creator: scriptCreator||null
-  };
 
-  let result;
   if(currentEditingPostId) {
-    await sbPatch(table,`id=eq.${currentEditingPostId}`,postData);
-    result=true;
+    // ✅ EDIT MODE — NEVER change creator (uploader). Only update content fields.
+    const editData={
+      title, description:desc, code,
+      type:document.getElementById('upload-type').value,
+      tags:currentTags,
+      thumbnail_url:thumbnailUrl,
+      script_creator: scriptCreator||null
+      // ❌ No creator field here — original uploader stays unchanged
+    };
+    await sbPatch(table,`id=eq.${currentEditingPostId}`,editData);
   } else {
-    result=await sbPost(table,postData);
+    // ✅ NEW POST — creator is always the current logged-in user
+    const postData={
+      title, description:desc, code,
+      type:document.getElementById('upload-type').value,
+      tags:currentTags,
+      thumbnail_url:thumbnailUrl,
+      creator:APP.currentUser,
+      uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR,
+      script_creator: scriptCreator||null
+    };
+    await sbPost(table,postData);
   }
 
   APP.lastPostTime=now;
@@ -1113,17 +1122,28 @@ async function submitExecutorPost() {
     thumbnailUrl=pendingExecutorThumbData;
   }
 
-  const postData={
-    title:name,description:desc,link,
-    type:document.getElementById('exec-type').value,
-    tags:currentTags,thumbnail_url:thumbnailUrl,
-    creator:APP.currentUser,
-    uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR,
-    script_creator: document.getElementById('exec-script-creator')?.value.trim()||null
-  };
-
-  if(currentEditingPostId) await sbPatch('executor_posts',`id=eq.${currentEditingPostId}`,postData);
-  else await sbPost('executor_posts',postData);
+  if(currentEditingPostId) {
+    // ✅ EDIT MODE — never change creator (uploader)
+    const editData={
+      title:name, description:desc, link,
+      type:document.getElementById('exec-type').value,
+      tags:currentTags, thumbnail_url:thumbnailUrl,
+      script_creator: document.getElementById('exec-script-creator')?.value.trim()||null
+      // ❌ No creator or uploader_avatar — original uploader stays
+    };
+    await sbPatch('executor_posts',`id=eq.${currentEditingPostId}`,editData);
+  } else {
+    // ✅ NEW POST — creator is always current user
+    const postData={
+      title:name, description:desc, link,
+      type:document.getElementById('exec-type').value,
+      tags:currentTags, thumbnail_url:thumbnailUrl,
+      creator:APP.currentUser,
+      uploader_avatar:APP.profile?.avatar_url||DEFAULT_AVATAR,
+      script_creator: document.getElementById('exec-script-creator')?.value.trim()||null
+    };
+    await sbPost('executor_posts',postData);
+  }
 
   APP.lastPostTime=now;
   hideLoading();
