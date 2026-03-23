@@ -3092,45 +3092,44 @@ function setupListeners(){
 
   // File input
   document.getElementById('hidden-input').addEventListener('change',handleFileSelect);
-
-  // ══ MUSIC — Auto-play random, no controls ══
-  const MUSIC_BASE = 'https://angelo-gitland.github.io/lualandrsl/music/';
-  const MUSIC_LIST = [
-    'lazarosv-awakening-code-i-337270.mp3',
-    'starostin-comedy-cartoon-funny-background-music-492540.mp3',
-    'theorienvibes-friends-235450.mp3'
-  ];
-  let _lastTrack = -1;
-
-  function playRandomTrack() {
-    const bgm = document.getElementById('music-bgm');
-    if(!bgm) return;
-    let idx;
-    do { idx = Math.floor(Math.random() * MUSIC_LIST.length); }
-    while(idx === _lastTrack && MUSIC_LIST.length > 1);
-    _lastTrack = idx;
-    bgm.src = MUSIC_BASE + MUSIC_LIST[idx];
-    bgm.volume = 0.35;
-    bgm.play().catch(()=>{});
-  }
-
-  const _bgm = document.getElementById('music-bgm');
-  if(_bgm) {
-    // When song ends → play next random
-    _bgm.addEventListener('ended', playRandomTrack);
-    // If error → try next after 1s
-    _bgm.addEventListener('error', () => setTimeout(playRandomTrack, 1000));
-  }
-
-  // Auto-start on first user interaction (browser requires this)
-  const _startMusic = () => {
-    playRandomTrack();
-    document.removeEventListener('touchstart', _startMusic);
-    document.removeEventListener('click', _startMusic);
-  };
-  document.addEventListener('touchstart', _startMusic, {once:true});
-  document.addEventListener('click', _startMusic, {once:true});
 }
+
+// ══ MUSIC — Auto-play random, no controls ══
+const MUSIC_BASE = 'https://angelo-gitland.github.io/lualandrsl/music/';
+const MUSIC_LIST = [
+  'lazarosv-awakening-code-i-337270.mp3',
+  'starostin-comedy-cartoon-funny-background-music-492540.mp3',
+  'theorienvibes-friends-235450.mp3'
+];
+let _lastTrack = -1;
+let _musicStarted = false;
+
+function playRandomTrack() {
+  const bgm = document.getElementById('music-bgm');
+  if(!bgm) return;
+  let idx;
+  do { idx = Math.floor(Math.random() * MUSIC_LIST.length); }
+  while(idx === _lastTrack && MUSIC_LIST.length > 1);
+  _lastTrack = idx;
+  bgm.src = MUSIC_BASE + MUSIC_LIST[idx];
+  bgm.volume = 0.4;
+  const p = bgm.play();
+  if(p !== undefined) p.catch(()=>{});
+}
+
+function initMusic() {
+  if(_musicStarted) return;
+  _musicStarted = true;
+  const bgm = document.getElementById('music-bgm');
+  if(!bgm) return;
+  bgm.addEventListener('ended', playRandomTrack);
+  bgm.addEventListener('error', ()=>setTimeout(playRandomTrack, 1500));
+  playRandomTrack();
+}
+
+document.addEventListener('click', initMusic, {once:true});
+document.addEventListener('touchstart', initMusic, {once:true});
+document.addEventListener('keydown', initMusic, {once:true});
 
 // ══ GOOGLE OAUTH ══
 const GOOGLE_CLIENT_ID = '21629672769-4q89pviset49rir1l06ni2maturjol6d.apps.googleusercontent.com';
