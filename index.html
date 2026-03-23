@@ -3103,6 +3103,7 @@ const MUSIC_LIST = [
 ];
 let _lastTrack = -1;
 let _musicStarted = false;
+let _musicInterval = null;
 
 function playRandomTrack() {
   const bgm = document.getElementById('music-bgm');
@@ -3113,6 +3114,7 @@ function playRandomTrack() {
   _lastTrack = idx;
   bgm.src = MUSIC_BASE + MUSIC_LIST[idx];
   bgm.volume = 0.4;
+  bgm.load();
   const p = bgm.play();
   if(p !== undefined) p.catch(()=>{});
 }
@@ -3122,8 +3124,20 @@ function initMusic() {
   _musicStarted = true;
   const bgm = document.getElementById('music-bgm');
   if(!bgm) return;
+
+  // Primary: ended event
   bgm.addEventListener('ended', playRandomTrack);
+  // Fallback: error event
   bgm.addEventListener('error', ()=>setTimeout(playRandomTrack, 1500));
+
+  // Safety net: poll every 3 seconds — if song ended but event didn't fire, play next
+  _musicInterval = setInterval(()=>{
+    if(!bgm.src) return;
+    if(bgm.ended || bgm.paused && bgm.currentTime === 0 && _musicStarted){
+      playRandomTrack();
+    }
+  }, 3000);
+
   playRandomTrack();
 }
 
