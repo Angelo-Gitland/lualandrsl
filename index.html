@@ -220,6 +220,104 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
 <audio id="sfx-tap" src="https://prod-data.sekai.chat/chat-creation/b148d187-e529-411d-b2bd-cbe14ce572da.wav"></audio>
 <input type="file" id="hidden-input" accept="image/png,image/jpeg,image/webp" class="hidden">
 
+<!-- ══ NEW USER INTRO OVERLAY ══ -->
+<div id="intro-overlay" style="display:none;position:fixed;inset:0;background:#08080a;z-index:8000;flex-direction:column;overflow:hidden;">
+<style>
+#intro-overlay *{font-family:'Aleo',serif;box-sizing:border-box;}
+.intro-page{display:none;flex-direction:column;align-items:center;width:100%;height:100%;overflow-y:auto;padding:2rem 1.5rem 6rem;}
+.intro-page.active{display:flex;}
+.intro-big-title{font-size:clamp(1.5rem,5.5vw,2.2rem);font-weight:900;text-align:center;background:linear-gradient(135deg,#c084fc 0%,#818cf8 35%,#38bdf8 65%,#b026ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 12px rgba(176,38,255,0.5));animation:introFadeDown 0.7s ease both;margin-bottom:1.2rem;margin-top:1.5rem;}
+.intro-desc{font-size:0.88rem;color:#b026ff!important;opacity:0.85;text-align:center;line-height:1.75;max-width:340px;margin:0 auto;animation:introFadeUp 0.8s ease 0.2s both;}
+.intro-rule{display:flex;gap:10px;align-items:flex-start;text-align:left;margin-bottom:0.9rem;}
+.intro-rule-dot{width:7px;height:7px;border-radius:50%;background:#b026ff;flex-shrink:0;margin-top:6px;box-shadow:0 0 6px rgba(176,38,255,0.6);}
+.intro-rule-text{font-size:0.82rem;color:#b026ff!important;opacity:0.9;line-height:1.6;}
+.intro-nav-row{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(8,8,10,0.97);border-top:1px solid rgba(176,38,255,0.15);z-index:8010;}
+.intro-nav-btn{width:48px;height:48px;border-radius:50%;background:rgba(176,38,255,0.12);border:2px solid rgba(176,38,255,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;}
+.intro-nav-btn:active{transform:scale(0.9);}
+.intro-nav-btn.hidden-btn{opacity:0;pointer-events:none;}
+.intro-dots{display:flex;gap:6px;align-items:center;}
+.intro-dot{width:7px;height:7px;border-radius:50%;background:rgba(176,38,255,0.25);transition:all 0.3s;}
+.intro-dot.idot-active{background:#b026ff;box-shadow:0 0 6px rgba(176,38,255,0.6);width:20px;border-radius:4px;}
+.intro-section-title{font-size:1.7rem;font-weight:900;color:#b026ff!important;text-shadow:0 0 16px rgba(176,38,255,0.5);text-align:center;margin-bottom:1rem;}
+.intro-verify-badge{display:inline-flex;align-items:center;gap:5px;background:#000;border:1.5px solid rgba(255,255,255,0.35);border-radius:8px;padding:7px 16px;font-size:13px;font-weight:900;color:#fff!important;text-shadow:none;box-shadow:0 0 10px rgba(255,255,255,0.08);}
+@keyframes introFadeDown{from{opacity:0;transform:translateY(-18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes introFadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+</style>
+
+  <!-- PAGE 1 — Welcome -->
+  <div class="intro-page active" id="intro-p1">
+    <div style="width:100%;max-width:400px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">
+      <div style="margin-top:2.5rem;margin-bottom:1rem;">
+        <svg width="70" height="70" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 10px rgba(176,38,255,0.5));">
+          <circle cx="100" cy="100" r="98" fill="#0a0a0a" stroke="#b026ff" stroke-width="3"/>
+          <circle cx="100" cy="100" r="68" fill="#b026ff"/>
+          <path d="M100 42 C100 42 92 88 56 100 C92 112 100 158 100 158 C100 158 108 112 144 100 C108 88 100 42 100 42Z" fill="#0a0a0a"/>
+        </svg>
+      </div>
+      <h1 class="intro-big-title">Welcome to LuaLand.RSL!</h1>
+      <p class="intro-desc">Welcome to LuaLand.RequireScriptsLibrary! We are happy to meet you! Thank you for creating an account! To see our rules please navigate to next page — click the arrow below.</p>
+    </div>
+  </div>
+
+  <!-- PAGE 2 — Rules -->
+  <div class="intro-page" id="intro-p2">
+    <div style="width:100%;max-width:420px;margin:0 auto;">
+      <h2 class="intro-section-title">Rules</h2>
+      <p style="font-size:0.76rem;color:rgba(176,38,255,0.5)!important;text-align:center;margin-bottom:1rem;">Read carefully before using LuaLand.RSL</p>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Sharing Invalid Script</strong> — No sharing any invalid or not working scripts in any tabs. Unless the script actually has bugs.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Account Hacking</strong> — Hacking accounts here isn't allowed. You will get a permanent account ban.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Comments Spam</strong> — Spamming comments to a post will cause permanent bans, like repeated messages without delay.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Post Spam</strong> — Spamming or repeating uploading a post isn't allowed unless you have the verify badge.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Code Cracking</strong> — Deobfuscating client scripts will result in a permanent ban by developers.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Malicious Files</strong> — Uploading malicious or unverified files in executors tab isn't allowed. You must verify yourself.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Dislike Spam</strong> — Spam disliking a user post may cause a permanent ban.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">Report Immediately</strong> — Please report immediately the users who break the rules in this website.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">Give the Real Script Creator</strong> — In uploading a script, give the real creator. If unknown, type "UNKNOWN".</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Multiple Accounts</strong> — Do not create 10 or more accounts.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text"><strong style="color:#b026ff!important;">No Sharing Personal Info</strong> — Do not share passwords, protect.me passwords, or other personal info.</p></div>
+      <p style="font-size:0.84rem;color:#b026ff!important;text-align:center;margin-top:1.2rem;font-weight:700;opacity:0.75;">These are the rules! Click the arrow to navigate to next page!</p>
+    </div>
+  </div>
+
+  <!-- PAGE 3 — How to get Verified -->
+  <div class="intro-page" id="intro-p3">
+    <div style="width:100%;max-width:420px;margin:0 auto;">
+      <h2 class="intro-section-title">How to get Verify Badge?</h2>
+      <p style="font-size:0.8rem;color:rgba(176,38,255,0.6)!important;text-align:center;margin-bottom:1rem;">To get the verify badge here are the steps:</p>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text">Make sure your account has 50 or more followers.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text">Make sure you are connected to our Discord server.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text">Make sure you have 25 posts or more, with 50 or more likes.</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text">Make sure your account has a thumbnail (avatar).</p></div>
+      <div class="intro-rule"><div class="intro-rule-dot"></div><p class="intro-rule-text">Make sure you follow our rules and understand the topics.</p></div>
+      <!-- Verified Badge Preview -->
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:1.5rem;gap:0.5rem;">
+        <p style="font-size:0.76rem;color:rgba(176,38,255,0.5)!important;">Verified Badge looks like this:</p>
+        <div class="intro-verify-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Verified
+        </div>
+        <p style="font-size:0.76rem;color:rgba(176,38,255,0.4)!important;text-align:center;max-width:260px;">This badge appears beside your username when you meet all requirements and get approved by a developer.</p>
+      </div>
+      <p style="font-size:0.84rem;color:#b026ff!important;text-align:center;margin-top:1.5rem;font-weight:700;opacity:0.8;">Click the right arrow to enter LuaLand.RSL! 🚀</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="intro-nav-row">
+    <button class="intro-nav-btn hidden-btn" id="intro-btn-left" onclick="introNav(-1)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+    </button>
+    <div class="intro-dots">
+      <div class="intro-dot idot-active" id="intro-dot-0"></div>
+      <div class="intro-dot" id="intro-dot-1"></div>
+      <div class="intro-dot" id="intro-dot-2"></div>
+    </div>
+    <button class="intro-nav-btn" id="intro-btn-right" onclick="introNav(1)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- Desktop Gate Overlay -->
 <div id="desktop-gate" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;">
   <style>
@@ -312,6 +410,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       <button class="nav-link active" data-target="account">Account</button>
       <button class="nav-link hidden" id="nav-reports-btn" data-target="reports">Reports</button>
       <button class="nav-link hidden" id="nav-database-btn" data-target="database">Database</button>
+      <button class="nav-link hidden" id="nav-rbxm-btn" data-target="rbxm">Rbxm</button>
     </nav>
   </header>
 
@@ -330,6 +429,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
           <option value="Guis">Guis</option>
           <option value="Spawner">Spawner</option>
           <option value="Jumpscares">Jumpscares</option>
+          <option value="Tools">Tools</option>
         </select>
         <button id="btn-open-upload" class="bg-primary-custom p-3">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
@@ -368,10 +468,12 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
         <select id="executor-category-select" class="w-auto min-w-[160px]">
           <option value="All">All Category</option>
-          <option value="Mobile">Mobile Executors</option>
-          <option value="PC">Pc Executors</option>
-          <option value="Free">Free</option>
-          <option value="Paid">Paid</option>
+          <option value="Mobile &amp; Free">Mobile &amp; Free</option>
+          <option value="Mobile &amp; Paid">Mobile &amp; Paid</option>
+          <option value="PC &amp; Free">PC &amp; Free</option>
+          <option value="PC &amp; Paid">PC &amp; Paid</option>
+          <option value="Key System">Key System</option>
+          <option value="Keyless">Keyless</option>
         </select>
         <button id="btn-open-executor-upload" class="bg-primary-custom p-3">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
@@ -535,10 +637,138 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       </div>
     </div>
 
+    <!-- TAB: RBXM -->
+    <div id="tab-rbxm" class="tab-content p-4">
+      <div class="flex flex-wrap gap-3 mb-6 items-center">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+          <input type="text" id="rbxm-search-input" placeholder="Search rbxm files..." class="pl-10">
+        </div>
+        <select id="rbxm-category-select" class="w-auto min-w-[140px]">
+          <option value="All">All Category</option>
+          <option value="Rbxm">Rbxm</option>
+          <option value="Rbxmx">Rbxmx</option>
+        </select>
+        <button id="btn-open-rbxm-upload" class="bg-primary-custom p-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>
+        </button>
+      </div>
+      <div id="rbxm-feed-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10"></div>
+    </div>
+
   </main>
 </div>
 
 <!-- ══ MODALS ══ -->
+
+<!-- Rbxm Upload Modal -->
+<div id="modal-upload-rbxm" class="modal-overlay">
+  <div class="modal-content max-w-2xl w-full h-full max-h-[95vh] relative flex flex-col">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-surface flex-shrink-0">
+      <h2 class="text-xl font-bold neon-text">Rbxm</h2>
+      <button onclick="closeModal('modal-upload-rbxm')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    </div>
+    <div class="modal-body flex-1 overflow-y-auto space-y-5 p-5">
+      <!-- Name -->
+      <div>
+        <label class="text-sm font-bold">Name</label>
+        <input type="text" id="rbxm-upload-name" placeholder="Name of your Rbxm file...">
+      </div>
+      <!-- Description -->
+      <div>
+        <label class="text-sm font-bold">Description</label>
+        <textarea id="rbxm-upload-description" maxlength="500" placeholder="Describe your rbxm file..."></textarea>
+      </div>
+      <!-- File Type -->
+      <div>
+        <label class="text-sm font-bold">File Type</label>
+        <select id="rbxm-upload-type">
+          <option value="Rbxm">.rbxm</option>
+          <option value="Rbxmx">.rbxmx</option>
+        </select>
+      </div>
+      <!-- File Upload — dedicated input, no image editor -->
+      <div>
+        <label class="text-sm font-bold">File (.rbxm / .rbxmx only)</label>
+        <!-- Hidden file input — completely separate from image hidden-input -->
+        <input type="file" id="rbxm-file-input" style="display:none;">
+        <div id="rbxm-file-area" onclick="document.getElementById('rbxm-file-input').click()" style="
+          width:100%;padding:2rem;background:#000;border:2px dashed rgba(176,38,255,0.4);
+          border-radius:12px;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;cursor:pointer;gap:10px;transition:border-color 0.2s;
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="M9 15l3-3 3 3"/></svg>
+          <p id="rbxm-file-label" style="font-size:13px;font-weight:700;color:#b026ff;text-shadow:none;text-align:center;">Tap to select file</p>
+          <p style="font-size:10px;opacity:0.4;color:#b026ff;">Documents only — no images</p>
+        </div>
+        <p id="rbxm-file-error" style="display:none;font-size:11px;color:#ef4444;margin-top:6px;text-align:center;">Only .rbxm or .rbxmx files are allowed.</p>
+      </div>
+      <!-- Tags -->
+      <div>
+        <label class="text-sm font-bold">Tags (Max 5) — Press Enter</label>
+        <div id="rbxm-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
+        <input type="text" id="rbxm-tag-input" placeholder="Add tag...">
+      </div>
+    </div>
+    <div class="p-4 border-t border-white/10 bg-surface flex-shrink-0">
+      <button id="btn-submit-rbxm" class="w-full bg-black border border-primary-custom text-primary-custom font-bold py-3 text-lg rounded-custom">Publish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rbxm View Modal -->
+<div id="modal-view-rbxm" class="modal-overlay">
+  <div class="modal-content max-w-2xl w-full h-full max-h-[95vh] relative flex flex-col">
+    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-surface flex-shrink-0">
+      <h2 id="rbxm-view-title" class="text-xl font-bold neon-text truncate"></h2>
+      <button onclick="closeModal('modal-view-rbxm')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    </div>
+    <div class="modal-body flex-1 overflow-y-auto p-5 space-y-5">
+      <!-- File icon + name -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:1.5rem;background:rgba(176,38,255,0.06);border:1px solid rgba(176,38,255,0.2);border-radius:12px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p id="rbxm-view-filename" style="font-size:13px;font-weight:700;color:#b026ff;word-break:break-all;text-align:center;"></p>
+      </div>
+      <!-- Uploader -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img id="rbxm-view-avatar" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(176,38,255,0.4);cursor:pointer;">
+        <div>
+          <p style="font-size:11px;opacity:0.5;font-weight:700;text-transform:uppercase;color:#b026ff;">Uploaded by</p>
+          <p id="rbxm-view-uploader" style="font-size:14px;font-weight:900;color:#b026ff;cursor:pointer;"></p>
+        </div>
+      </div>
+      <!-- Description -->
+      <div>
+        <p style="font-size:11px;opacity:0.5;font-weight:700;text-transform:uppercase;color:#b026ff;margin-bottom:6px;">Description</p>
+        <p id="rbxm-view-description" style="font-size:14px;color:#b026ff;line-height:1.7;white-space:pre-wrap;"></p>
+      </div>
+      <!-- Tags -->
+      <div>
+        <p style="font-size:11px;opacity:0.5;font-weight:700;text-transform:uppercase;color:#b026ff;margin-bottom:6px;">Tags</p>
+        <div id="rbxm-view-tags" class="flex flex-wrap gap-2"></div>
+      </div>
+      <!-- Download button — logged in users only -->
+      <div id="rbxm-download-area">
+        <button id="btn-download-rbxm" onclick="downloadRbxmFile()" style="
+          width:100%;background:#b026ff;border:none;border-radius:12px;
+          padding:14px;color:#fff;font-family:'Aleo',serif;font-weight:900;
+          font-size:15px;cursor:pointer;display:flex;align-items:center;
+          justify-content:center;gap:10px;text-shadow:none;
+          box-shadow:0 0 16px rgba(176,38,255,0.35);
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download .rbxm
+        </button>
+        <p id="rbxm-login-msg" class="hidden" style="text-align:center;font-size:12px;color:#b026ff;opacity:0.6;margin-top:8px;">Login required to download.</p>
+      </div>
+      <!-- Owner actions -->
+      <div id="rbxm-owner-actions" class="hidden flex gap-3">
+        <button id="btn-delete-rbxm" style="flex:1;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:10px;color:#ef4444;font-family:'Aleo',serif;font-weight:700;font-size:13px;cursor:pointer;text-shadow:none;">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Upload Script -->
 <div id="modal-upload" class="modal-overlay">
   <div class="modal-content max-w-2xl w-full h-full max-h-[95vh] relative flex flex-col">
@@ -619,7 +849,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       </div>
       <div><label class="text-sm font-bold">Description</label><textarea id="exec-description" maxlength="500" placeholder="Describe the executor..."></textarea></div>
       <div><label class="text-sm font-bold">Download Link</label><input type="url" id="exec-link" placeholder="Download Link..."></div>
-      <div><label class="text-sm font-bold">Type</label><select id="exec-type"><option value="Mobile">Mobile</option><option value="PC">PC</option><option value="Free">Free</option><option value="Paid">Paid</option></select></div>
+      <div><label class="text-sm font-bold">Type</label><select id="exec-type"><option value="Mobile &amp; Free">Mobile &amp; Free</option><option value="Mobile &amp; Paid">Mobile &amp; Paid</option><option value="PC &amp; Free">PC &amp; Free</option><option value="PC &amp; Paid">PC &amp; Paid</option><option value="Key System">Key System</option><option value="Keyless">Keyless</option></select></div>
       <div>
         <label class="text-sm font-bold">Tags (Max 5) - Press Enter</label>
         <div id="exec-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
@@ -968,6 +1198,7 @@ function switchTab(targetId) {
   if(targetId==='friends') { renderFriendsSearch(); updateInboxBadge(); }
   if(targetId==='notifications') renderNotificationsTab();
   if(targetId==='database') renderDatabaseTab();
+  if(targetId==='rbxm') renderRbxmFeed();
 }
 
 // ══ AUTH — SUPABASE ══
@@ -1094,6 +1325,8 @@ async function doRegister() {
   saveSession();
   hideLoading();
   initSession();
+  // ✅ Show intro for new users
+  showIntro();
   showToast("Account Created: "+u);
 }
 
@@ -1165,6 +1398,8 @@ function initSession() {
       document.getElementById('nav-reports-btn').classList.add('hidden');
       document.getElementById('nav-database-btn').classList.add('hidden');
     }
+    // Rbxm tab visible for all logged-in users
+    document.getElementById('nav-rbxm-btn').classList.remove('hidden');
     switchTab('Require_Scripts');
     updateInboxBadge();
   } else {
@@ -2189,7 +2424,7 @@ function openUploadModal(mode, editId=null) {
   typeSelect.innerHTML='';
   if(mode==='posts'){
     document.getElementById('upload-title').textContent="Post Script";
-    ['Abilities','Guis','Spawner','Jumpscares'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;typeSelect.appendChild(o);});
+    ['Abilities','Guis','Spawner','Jumpscares','Tools'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;typeSelect.appendChild(o);});
   } else {
     document.getElementById('upload-title').textContent="Post Client Script";
     ['Script Games','Universal Script','Admin Scripts','Script Hub'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;typeSelect.appendChild(o);});
@@ -2759,6 +2994,197 @@ function editorWheelZoom(e) {
   clampCropBox(); drawEditorCanvas();
 }
 
+// ══ RBXM TAB ══
+let rbxmTags = [];
+let currentRbxmPost = null;
+let pendingRbxmFile = null;
+let pendingRbxmFileName = '';
+
+function renderRbxmTags() {
+  const cont = document.getElementById('rbxm-tags-container');
+  if(!cont) return;
+  cont.innerHTML = '';
+  rbxmTags.forEach((t,i) => {
+    const s = document.createElement('span');
+    s.className = 'tag-pill';
+    s.innerHTML = `${t}<button onclick="rbxmTags.splice(${i},1);renderRbxmTags();" style="background:none;border:none;cursor:pointer;color:#b026ff;font-size:14px;padding:0 0 0 4px;">×</button>`;
+    cont.appendChild(s);
+  });
+}
+
+async function renderRbxmFeed() {
+  const grid = document.getElementById('rbxm-feed-grid');
+  if(!grid) return;
+  grid.innerHTML = '<div class="col-span-full text-center opacity-40 py-8 text-xs">Loading...</div>';
+  const search = (document.getElementById('rbxm-search-input')?.value||'').toLowerCase();
+  const cat = document.getElementById('rbxm-category-select')?.value||'All';
+  let q = 'select=*&order=created_at.desc';
+  if(cat !== 'All') q += `&file_type=eq.${cat}`;
+
+  let posts = [];
+  try { posts = await sbGet('rbxm_posts', q); } catch(e) { posts = []; }
+  if(!Array.isArray(posts)) posts = [];
+
+  grid.innerHTML = '';
+  const filtered = search ? posts.filter(p => (p.name||'').toLowerCase().includes(search)) : posts;
+
+  if(filtered.length === 0) {
+    grid.innerHTML = `<div class="col-span-full text-center opacity-40 py-8 border border-dashed border-primary-custom/20 rounded-custom">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-2 opacity-30"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p class="text-xs">No rbxm files found.</p>
+    </div>`;
+    return;
+  }
+  filtered.forEach(post => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => openRbxmView(post);
+    card.innerHTML = `
+      <div style="width:100%;aspect-ratio:1/1;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;border-bottom:1px solid rgba(176,38,255,0.1);gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.2" opacity="0.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span style="font-size:9px;font-weight:900;color:#b026ff;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;">.${(post.file_type||'rbxm').toLowerCase()}</span>
+      </div>
+      <div class="p-3">
+        <h3 class="font-bold truncate text-sm">${post.name||'Untitled'}</h3>
+        <div class="creator-row mt-2">
+          <img src="${post.uploader_avatar||DEFAULT_AVATAR}" class="w-5 h-5 rounded-full border border-primary-custom/30 object-cover flex-shrink-0">
+          <p class="text-[10px] font-bold creator-name-text">${post.creator||''}</p>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function openRbxmView(post) {
+  currentRbxmPost = post;
+  document.getElementById('rbxm-view-title').textContent = post.name||'Untitled';
+  document.getElementById('rbxm-view-filename').textContent = post.file_name||post.name;
+  document.getElementById('rbxm-view-description').textContent = post.description||'';
+  document.getElementById('rbxm-view-uploader').innerHTML = post.creator + getUserBadges(post.creator, false);
+  document.getElementById('rbxm-view-avatar').src = post.uploader_avatar||DEFAULT_AVATAR;
+  document.getElementById('rbxm-view-avatar').onclick = () => viewUserProfile(post.creator);
+  document.getElementById('rbxm-view-uploader').onclick = () => viewUserProfile(post.creator);
+  const tagCont = document.getElementById('rbxm-view-tags');
+  tagCont.innerHTML = '';
+  (post.tags||[]).forEach(t => { const s = document.createElement('span'); s.className='tag'; s.textContent=t; tagCont.appendChild(s); });
+  const dlBtn = document.getElementById('btn-download-rbxm');
+  const loginMsg = document.getElementById('rbxm-login-msg');
+  if(APP.currentUser) { dlBtn.classList.remove('hidden'); loginMsg.classList.add('hidden'); }
+  else { dlBtn.classList.add('hidden'); loginMsg.classList.remove('hidden'); }
+  const ownerActions = document.getElementById('rbxm-owner-actions');
+  if(post.creator === APP.currentUser || APP.isAdmin) {
+    ownerActions.classList.remove('hidden'); ownerActions.classList.add('flex');
+    document.getElementById('btn-delete-rbxm').onclick = () => {
+      showConfirmDelete('Delete this rbxm file?', async () => {
+        showLoading('Deleting...');
+        await sbDelete('rbxm_posts', `id=eq.${post.id}`);
+        hideLoading(); closeModal('modal-view-rbxm');
+        renderRbxmFeed(); showToast('Rbxm file deleted.');
+      });
+    };
+  } else { ownerActions.classList.add('hidden'); }
+  openModal('modal-view-rbxm');
+}
+
+async function downloadRbxmFile() {
+  if(!APP.currentUser) return showToast('Login required to download.');
+  if(!currentRbxmPost?.file_url) return showToast('File not found.');
+  try {
+    const fileUrl = currentRbxmPost.file_url;
+    const fileName = currentRbxmPost.file_name || (currentRbxmPost.name + '.rbxm');
+    const a = document.createElement('a');
+
+    if(fileUrl.startsWith('data:')) {
+      // Base64 stored directly
+      a.href = fileUrl;
+    } else {
+      // External URL — fetch and blob
+      showLoading('Preparing download...');
+      const r = await fetch(fileUrl);
+      const blob = await r.blob();
+      a.href = URL.createObjectURL(blob);
+      hideLoading();
+    }
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('Download started!');
+  } catch(e) {
+    hideLoading();
+    showToast('Download failed. Try again.');
+  }
+}
+
+// Direct Supabase Storage upload for non-image files
+async function supabaseUploadFile(bucket, filename, file) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/octet-stream',
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+    if(!r.ok) { const e = await r.json().catch(()=>({})); return {data:null,error:e}; }
+    return {data:true, error:null};
+  } catch(e) { return {data:null, error:{message:e.message}}; }
+}
+
+async function submitRbxmPost() {
+  const name = document.getElementById('rbxm-upload-name').value.trim();
+  const desc = document.getElementById('rbxm-upload-description').value.trim();
+  const fileType = document.getElementById('rbxm-upload-type')?.value || 'Rbxm';
+  if(!name) return showToast('Name is required.');
+  if(!desc) return showToast('Description is required.');
+  if(!pendingRbxmFile) return showToast('Please select a .rbxm or .rbxmx file first.');
+  if(!APP.currentUser) return showToast('Login required.');
+
+  showLoading('Publishing...');
+  try {
+    // Convert file to base64 — store directly in DB (rbxm files are small)
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(pendingRbxmFile);
+    });
+
+    const result = await sbPost('rbxm_posts', {
+      name,
+      description: desc,
+      file_url: base64,
+      file_name: pendingRbxmFileName,
+      file_type: fileType,
+      tags: rbxmTags,
+      creator: APP.currentUser,
+      uploader_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR
+    });
+
+    if(!result) {
+      hideLoading();
+      return showToast('Publish failed — check Supabase table exists.');
+    }
+
+    hideLoading();
+    closeModal('modal-upload-rbxm');
+    pendingRbxmFile = null; pendingRbxmFileName = ''; rbxmTags = [];
+    document.getElementById('rbxm-upload-name').value = '';
+    document.getElementById('rbxm-upload-description').value = '';
+    document.getElementById('rbxm-file-label').textContent = 'Tap to select file';
+    renderRbxmTags();
+    switchTab('rbxm');
+    showToast('Rbxm file published!');
+  } catch(e) {
+    hideLoading();
+    console.error('submitRbxmPost error:', e);
+    showToast('Error: ' + (e.message||'Unknown error'));
+  }
+}
+
 function setupListeners(){
   // Nav
   document.querySelectorAll('.nav-link').forEach(btn=>{
@@ -3092,14 +3518,146 @@ function setupListeners(){
 
   // File input
   document.getElementById('hidden-input').addEventListener('change',handleFileSelect);
+
+  // ══ RBXM TAB LISTENERS ══
+  document.getElementById('btn-open-rbxm-upload').addEventListener('click',()=>{
+    rbxmTags=[]; renderRbxmTags();
+    pendingRbxmFile=null; pendingRbxmFileName='';
+    document.getElementById('rbxm-upload-name').value='';
+    document.getElementById('rbxm-upload-description').value='';
+    document.getElementById('rbxm-file-label').textContent='Tap to select file';
+    document.getElementById('rbxm-file-error').style.display='none';
+    openModal('modal-upload-rbxm');
+  });
+  document.getElementById('btn-submit-rbxm').addEventListener('click', submitRbxmPost);
+  document.getElementById('rbxm-search-input').addEventListener('input', renderRbxmFeed);
+  document.getElementById('rbxm-category-select').addEventListener('change', renderRbxmFeed);
+  document.getElementById('rbxm-tag-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const v=e.target.value.trim();
+      if(v && rbxmTags.length<5){ rbxmTags.push(v); renderRbxmTags(); e.target.value=''; }
+    }
+  });
+  // Dedicated file input — completely separate, no image editor triggered
+  document.getElementById('rbxm-file-input').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file){ e.target.value=''; return; }
+    const errEl = document.getElementById('rbxm-file-error');
+    const name = file.name.toLowerCase();
+    // Block images
+    if(/\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$/i.test(name)){
+      errEl.textContent = 'Images are not allowed. Only .rbxm or .rbxmx files.';
+      errEl.style.display = 'block';
+      pendingRbxmFile = null; pendingRbxmFileName = '';
+      document.getElementById('rbxm-file-label').textContent = 'Tap to select file';
+      e.target.value = ''; return;
+    }
+    // Only allow rbxm/rbxmx (or any non-image document)
+    pendingRbxmFile = file;
+    pendingRbxmFileName = file.name;
+    document.getElementById('rbxm-file-label').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-right:4px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#22c55e!important;">${file.name}</span>`;
+    errEl.style.display = 'none';
+    // Auto-set file type dropdown
+    const typeSelect = document.getElementById('rbxm-upload-type');
+    if(typeSelect){
+      if(name.endsWith('.rbxmx')) typeSelect.value='Rbxmx';
+      else typeSelect.value='Rbxm';
+    }
+    e.target.value = '';
+  });
 }
 
-// ══ MUSIC — Auto-play random, no controls ══
+// ══ INTRO SYSTEM ══
+let _introPage = 1;
+const INTRO_TOTAL = 3;
+const INTRO_KEY = 'lualand_intro_seen';
+
+function showIntro() {
+  const seen = localStorage.getItem(INTRO_KEY + '_' + APP.currentUser);
+  if(seen) return;
+  _introPage = 1;
+  updateIntroPage();
+  document.getElementById('intro-overlay').style.display = 'flex';
+}
+
+function updateIntroPage() {
+  // Pages: intro-p1, intro-p2, intro-p3
+  // Dots: intro-dot-0, intro-dot-1, intro-dot-2
+  for(let i = 1; i <= INTRO_TOTAL; i++) {
+    const page = document.getElementById('intro-p' + i);
+    const dot = document.getElementById('intro-dot-' + (i - 1));
+    if(page) {
+      if(i === _introPage) {
+        page.classList.add('active');
+        page.scrollTop = 0;
+      } else {
+        page.classList.remove('active');
+      }
+    }
+    if(dot) {
+      if(i === _introPage) dot.classList.add('idot-active');
+      else dot.classList.remove('idot-active');
+    }
+  }
+  // Left arrow hidden on page 1
+  const leftBtn = document.getElementById('intro-btn-left');
+  if(leftBtn) {
+    if(_introPage === 1) leftBtn.classList.add('hidden-btn');
+    else leftBtn.classList.remove('hidden-btn');
+  }
+  // Update right arrow on last page — show checkmark
+  const rightBtn = document.getElementById('intro-btn-right');
+  if(rightBtn) {
+    if(_introPage === INTRO_TOTAL) {
+      rightBtn.style.background = '#b026ff';
+      rightBtn.style.border = 'none';
+      rightBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    } else {
+      rightBtn.style.background = 'rgba(176,38,255,0.12)';
+      rightBtn.style.border = '2px solid rgba(176,38,255,0.4)';
+      rightBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
+    }
+  }
+}
+
+function introNav(dir) {
+  if(dir === 1) introNext();
+  else introPrev();
+}
+
+function introNext() {
+  if(_introPage < INTRO_TOTAL) {
+    _introPage++;
+    updateIntroPage();
+  } else {
+    closeIntro();
+  }
+}
+
+function introPrev() {
+  if(_introPage > 1) {
+    _introPage--;
+    updateIntroPage();
+  }
+}
+
+function closeIntro() {
+  localStorage.setItem(INTRO_KEY + '_' + APP.currentUser, '1');
+  document.getElementById('intro-overlay').style.display = 'none';
+  initMusic();
+}
 const MUSIC_BASE = 'https://angelo-gitland.github.io/lualandrsl/music/';
 const MUSIC_LIST = [
   'lazarosv-awakening-code-i-337270.mp3',
   'starostin-comedy-cartoon-funny-background-music-492540.mp3',
-  'theorienvibes-friends-235450.mp3'
+  'theorienvibes-friends-235450.mp3',
+  '4379051-hacker-alarm-124960.mp3',
+  'agerabeatz-script-235694.mp3',
+  'audioknap-innovation-458050.mp3',
+  'jumpingbunny-roblox-294299.mp3',
+  'romansenykmusic-uplifting-upbeat-energetic-instrumental-125963.mp3',
+  'yellowbirdbeats-banger-x-dark-x-drop-beat-glassy-look-292125.mp3'
 ];
 let _lastTrack = -1;
 let _musicStarted = false;
@@ -3252,6 +3810,7 @@ async function handleGoogleCallback() {
         saveSession();
         hideLoading();
         initSession();
+        showIntro();
         showToast(`Welcome to LuaLand, ${googleName}! Your username: ${finalUsername}`);
       }
     } catch(e) {
@@ -3261,6 +3820,7 @@ async function handleGoogleCallback() {
     }
   }
 }
+
 const SESSION_KEY='lualand_session';
 function saveSession(){
   if(APP.currentUser){
