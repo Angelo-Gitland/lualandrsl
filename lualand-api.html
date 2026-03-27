@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LuaLand.RSL — API Documentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Aleo:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08080a;--surface:#121216;--primary:#b026ff;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--radius:12px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--primary);font-family:'Aleo',serif;min-height:100vh;}
+a{color:var(--primary);text-decoration:none;}
+/* Header */
+.api-header{background:var(--surface);border-bottom:1px solid rgba(176,38,255,0.2);padding:1rem 1.5rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+.api-logo{width:38px;height:38px;flex-shrink:0;}
+.api-header-title{font-size:1.3rem;font-weight:900;background:linear-gradient(135deg,#c084fc,#818cf8,#38bdf8,#b026ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.api-header-badge{background:rgba(176,38,255,0.15);border:1px solid rgba(176,38,255,0.3);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--primary);margin-left:auto;}
+/* Layout */
+.api-container{max-width:900px;margin:0 auto;padding:2rem 1.5rem;}
+/* Hero */
+.api-hero{text-align:center;padding:3rem 1rem 2rem;}
+.api-hero h1{font-size:2.2rem;font-weight:900;background:linear-gradient(135deg,#c084fc,#818cf8,#38bdf8,#b026ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.75rem;}
+.api-hero p{font-size:0.95rem;opacity:0.7;line-height:1.7;max-width:500px;margin:0 auto;}
+/* Base URL box */
+.base-url-box{background:var(--surface);border:1.5px solid rgba(176,38,255,0.3);border-radius:var(--radius);padding:1rem 1.25rem;margin:1.5rem 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.base-url-label{font-size:11px;font-weight:700;opacity:0.5;text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0;}
+.base-url-value{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);word-break:break-all;flex:1;}
+.copy-btn{background:rgba(176,38,255,0.15);border:1px solid rgba(176,38,255,0.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--primary);transition:all 0.2s;flex-shrink:0;}
+.copy-btn:hover{background:rgba(176,38,255,0.25);}
+/* Section titles */
+.section-title{font-size:1.3rem;font-weight:900;color:var(--primary);margin:2.5rem 0 1rem;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:rgba(176,38,255,0.15);}
+/* API Key section */
+.api-key-card{background:var(--surface);border:1.5px solid rgba(176,38,255,0.25);border-radius:var(--radius);padding:1.25rem;}
+.api-key-input-row{display:flex;gap:8px;margin-top:0.75rem;flex-wrap:wrap;}
+.api-key-input{background:var(--bg);border:1px solid rgba(176,38,255,0.3);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);flex:1;min-width:200px;outline:none;}
+.api-key-input:focus{border-color:var(--primary);}
+.api-key-btn{background:var(--primary);border:none;border-radius:8px;padding:10px 18px;color:#fff;font-family:'Aleo',serif;font-weight:700;font-size:13px;cursor:pointer;}
+/* Auth notice */
+.auth-notice{background:rgba(176,38,255,0.06);border:1px solid rgba(176,38,255,0.2);border-radius:var(--radius);padding:1rem 1.25rem;font-size:13px;line-height:1.7;margin-bottom:1.5rem;}
+.auth-notice code{background:rgba(176,38,255,0.15);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;}
+/* Endpoint cards */
+.endpoint-card{background:var(--surface);border:1px solid rgba(176,38,255,0.15);border-radius:var(--radius);margin-bottom:1rem;overflow:hidden;transition:border-color 0.2s;}
+.endpoint-card:hover{border-color:rgba(176,38,255,0.35);}
+.endpoint-header{padding:1rem 1.25rem;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
+.method-badge{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0;}
+.method-get{background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.3);}
+.endpoint-path{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);flex:1;}
+.endpoint-desc{font-size:12px;opacity:0.55;flex-shrink:0;}
+.endpoint-body{display:none;padding:0 1.25rem 1.25rem;border-top:1px solid rgba(176,38,255,0.1);}
+.endpoint-body.open{display:block;}
+/* Params table */
+.params-table{width:100%;border-collapse:collapse;font-size:12px;margin:0.75rem 0;}
+.params-table th{text-align:left;padding:6px 10px;background:rgba(176,38,255,0.08);color:var(--primary);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;}
+.params-table td{padding:7px 10px;border-bottom:1px solid rgba(176,38,255,0.08);color:var(--primary);opacity:0.85;vertical-align:top;}
+.param-name{font-family:'JetBrains Mono',monospace;font-size:11px;}
+.param-optional{background:rgba(245,158,11,0.15);color:var(--yellow);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:4px;}
+.param-required{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:4px;}
+/* Code blocks */
+.code-block{background:#000;border:1px solid rgba(176,38,255,0.2);border-radius:8px;padding:1rem;margin:0.75rem 0;overflow-x:auto;position:relative;}
+.code-block pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;color:#c084fc;white-space:pre;}
+.code-block .copy-btn{position:absolute;top:8px;right:8px;}
+.code-label{font-size:10px;font-weight:700;opacity:0.5;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.75rem;margin-bottom:0.25rem;}
+/* Live test */
+.try-btn{background:rgba(176,38,255,0.12);border:1.5px solid rgba(176,38,255,0.4);border-radius:8px;padding:8px 16px;font-family:'Aleo',serif;font-weight:700;font-size:12px;color:var(--primary);cursor:pointer;margin-top:0.75rem;transition:all 0.2s;}
+.try-btn:hover{background:rgba(176,38,255,0.2);}
+.try-result{background:#000;border:1px solid rgba(176,38,255,0.2);border-radius:8px;padding:1rem;margin-top:0.5rem;font-family:'JetBrains Mono',monospace;font-size:11px;color:#a3e635;display:none;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+/* Response schema */
+.schema-field{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(176,38,255,0.07);}
+.schema-key{font-family:'JetBrains Mono',monospace;font-size:11px;color:#818cf8;min-width:120px;flex-shrink:0;}
+.schema-type{font-size:10px;color:var(--yellow);opacity:0.8;min-width:60px;flex-shrink:0;}
+.schema-desc{font-size:11px;opacity:0.6;}
+/* Footer */
+.api-footer{text-align:center;padding:3rem 1.5rem;opacity:0.4;font-size:12px;border-top:1px solid rgba(176,38,255,0.1);margin-top:3rem;}
+/* Responsive */
+@media(max-width:600px){.api-hero h1{font-size:1.6rem;}.endpoint-desc{display:none;}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="api-header">
+  <svg class="api-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="100" cy="100" r="98" fill="#0a0a0a" stroke="#b026ff" stroke-width="3"/>
+    <circle cx="100" cy="100" r="68" fill="#b026ff"/>
+    <path d="M100 42 C100 42 92 88 56 100 C92 112 100 158 100 158 C100 158 108 112 144 100 C108 88 100 42 100 42Z" fill="#0a0a0a"/>
+  </svg>
+  <span class="api-header-title">LuaLand.RSL API</span>
+  <span class="api-header-badge">v1.0</span>
+</div>
+
+<div class="api-container">
+
+  <!-- Hero -->
+  <div class="api-hero">
+    <h1>LuaLand.RSL API</h1>
+    <p>Public read-only API for accessing scripts, executors, rbxm files and user data from LuaLand.RSL. Requires an API key to use.</p>
+  </div>
+
+  <!-- Base URL -->
+  <div class="base-url-box">
+    <span class="base-url-label">Base URL</span>
+    <span class="base-url-value" id="base-url-text">https://zcioapswxzqttijygctt.supabase.co/rest/v1</span>
+    <button class="copy-btn" onclick="copyText('https://zcioapswxzqttijygctt.supabase.co/rest/v1', this)">Copy</button>
+  </div>
+
+  <!-- API Key -->
+  <div class="section-title">Authentication</div>
+  <div class="api-key-card">
+    <p style="font-size:14px;opacity:0.85;line-height:1.6;">All requests require an <strong>API Key</strong> in the request header. Contact <strong>LuaLandHub</strong> on the platform to request a key.</p>
+    <div class="api-key-input-row">
+      <input class="api-key-input" id="demo-api-key" placeholder="Enter your API key to test endpoints..." type="password">
+      <button class="api-key-btn" onclick="setApiKey()">Set Key</button>
+    </div>
+    <p id="api-key-status" style="font-size:11px;margin-top:8px;opacity:0.5;"></p>
+  </div>
+
+  <div class="auth-notice" style="margin-top:1rem;">
+    Add your API key to every request header:<br>
+    <code>apikey: YOUR_API_KEY</code><br>
+    <code>Authorization: Bearer YOUR_API_KEY</code>
+  </div>
+
+  <!-- REQUIRE SCRIPTS -->
+  <div class="section-title">Require Scripts</div>
+
+  <!-- GET /posts -->
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/posts</span>
+      <span class="endpoint-desc">Fetch all require scripts</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Returns a list of all published require scripts.</p>
+      <p class="code-label">Query Parameters</p>
+      <table class="params-table">
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><span class="param-name">type</span><span class="param-optional">optional</span></td><td>string</td><td>Filter by type: Abilities, Guis, Spawner, Jumpscares, Tools</td></tr>
+        <tr><td><span class="param-name">creator</span><span class="param-optional">optional</span></td><td>string</td><td>Filter by uploader username</td></tr>
+        <tr><td><span class="param-name">limit</span><span class="param-optional">optional</span></td><td>number</td><td>Max results (default: 50, max: 100)</td></tr>
+        <tr><td><span class="param-name">offset</span><span class="param-optional">optional</span></td><td>number</td><td>Pagination offset</td></tr>
+      </table>
+      <p class="code-label">Example Request</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /posts?type=Abilities&limit=10
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+      <p class="code-label">Response Schema</p>
+      <div style="background:rgba(176,38,255,0.04);border-radius:8px;padding:0.75rem;margin-top:0.5rem;">
+        <div class="schema-field"><span class="schema-key">id</span><span class="schema-type">uuid</span><span class="schema-desc">Unique post ID</span></div>
+        <div class="schema-field"><span class="schema-key">title</span><span class="schema-type">string</span><span class="schema-desc">Script name</span></div>
+        <div class="schema-field"><span class="schema-key">description</span><span class="schema-type">string</span><span class="schema-desc">Script description</span></div>
+        <div class="schema-field"><span class="schema-key">code</span><span class="schema-type">string</span><span class="schema-desc">The actual script code</span></div>
+        <div class="schema-field"><span class="schema-key">type</span><span class="schema-type">string</span><span class="schema-desc">Category type</span></div>
+        <div class="schema-field"><span class="schema-key">tags</span><span class="schema-type">array</span><span class="schema-desc">List of tags</span></div>
+        <div class="schema-field"><span class="schema-key">creator</span><span class="schema-type">string</span><span class="schema-desc">Uploader username</span></div>
+        <div class="schema-field"><span class="schema-key">script_creator</span><span class="schema-type">string</span><span class="schema-desc">Actual script creator name</span></div>
+        <div class="schema-field"><span class="schema-key">thumbnail_url</span><span class="schema-type">string</span><span class="schema-desc">Thumbnail image URL</span></div>
+        <div class="schema-field"><span class="schema-key">likes</span><span class="schema-type">number</span><span class="schema-desc">Total likes</span></div>
+        <div class="schema-field"><span class="schema-key">created_at</span><span class="schema-type">timestamp</span><span class="schema-desc">Upload date</span></div>
+      </div>
+      <button class="try-btn" onclick="tryEndpoint(this, 'posts', '')">▶ Try it</button>
+      <div class="try-result"></div>
+    </div>
+  </div>
+
+  <!-- GET /posts?title search -->
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/posts?title=ilike.*{query}*</span>
+      <span class="endpoint-desc">Search scripts</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Search require scripts by title using partial match.</p>
+      <p class="code-label">Example Request</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /posts?title=ilike.*kill*&select=id,title,type,creator
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT SCRIPTS -->
+  <div class="section-title">Client Scripts</div>
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/client_posts</span>
+      <span class="endpoint-desc">Fetch all client scripts</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Returns all published client scripts.</p>
+      <p class="code-label">Query Parameters</p>
+      <table class="params-table">
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><span class="param-name">type</span><span class="param-optional">optional</span></td><td>string</td><td>Script Games, Universal Script, Admin Scripts, Script Hub</td></tr>
+        <tr><td><span class="param-name">creator</span><span class="param-optional">optional</span></td><td>string</td><td>Filter by uploader username</td></tr>
+        <tr><td><span class="param-name">limit</span><span class="param-optional">optional</span></td><td>number</td><td>Max results (default: 50)</td></tr>
+      </table>
+      <p class="code-label">Example Request</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /client_posts?type=eq.Admin Scripts&limit=20
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+      <button class="try-btn" onclick="tryEndpoint(this, 'client_posts', '')">▶ Try it</button>
+      <div class="try-result"></div>
+    </div>
+  </div>
+
+  <!-- EXECUTORS -->
+  <div class="section-title">Executors</div>
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/executor_posts</span>
+      <span class="endpoint-desc">Fetch all executors</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Returns all published executors.</p>
+      <p class="code-label">Query Parameters</p>
+      <table class="params-table">
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><span class="param-name">type</span><span class="param-optional">optional</span></td><td>string</td><td>Mobile &amp; Free, Mobile &amp; Paid, PC &amp; Free, PC &amp; Paid, Key System, Keyless</td></tr>
+        <tr><td><span class="param-name">limit</span><span class="param-optional">optional</span></td><td>number</td><td>Max results</td></tr>
+      </table>
+      <p class="code-label">Example Request</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /executor_posts?type=eq.Keyless&limit=10
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+      <p class="code-label">Response Schema</p>
+      <div style="background:rgba(176,38,255,0.04);border-radius:8px;padding:0.75rem;margin-top:0.5rem;">
+        <div class="schema-field"><span class="schema-key">id</span><span class="schema-type">uuid</span><span class="schema-desc">Unique executor ID</span></div>
+        <div class="schema-field"><span class="schema-key">title</span><span class="schema-type">string</span><span class="schema-desc">Executor name</span></div>
+        <div class="schema-field"><span class="schema-key">description</span><span class="schema-type">string</span><span class="schema-desc">Description</span></div>
+        <div class="schema-field"><span class="schema-key">link</span><span class="schema-type">string</span><span class="schema-desc">Download link</span></div>
+        <div class="schema-field"><span class="schema-key">type</span><span class="schema-type">string</span><span class="schema-desc">Executor category</span></div>
+        <div class="schema-field"><span class="schema-key">tags</span><span class="schema-type">array</span><span class="schema-desc">Tags list</span></div>
+        <div class="schema-field"><span class="schema-key">creator</span><span class="schema-type">string</span><span class="schema-desc">Uploader username</span></div>
+        <div class="schema-field"><span class="schema-key">created_at</span><span class="schema-type">timestamp</span><span class="schema-desc">Upload date</span></div>
+      </div>
+      <button class="try-btn" onclick="tryEndpoint(this, 'executor_posts', '')">▶ Try it</button>
+      <div class="try-result"></div>
+    </div>
+  </div>
+
+  <!-- RBXM -->
+  <div class="section-title">Rbxm Files</div>
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/rbxm_posts</span>
+      <span class="endpoint-desc">Fetch all rbxm files</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Returns all published rbxm files. Note: <code style="font-family:monospace;font-size:11px;background:rgba(176,38,255,0.1);padding:1px 5px;border-radius:4px;">file_url</code> contains base64 data for download.</p>
+      <p class="code-label">Query Parameters</p>
+      <table class="params-table">
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><span class="param-name">file_type</span><span class="param-optional">optional</span></td><td>string</td><td>Rbxm or Rbxmx</td></tr>
+        <tr><td><span class="param-name">select</span><span class="param-optional">optional</span></td><td>string</td><td>Comma-separated columns (exclude file_url for faster response)</td></tr>
+      </table>
+      <p class="code-label">Example Request — exclude file data for listing</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /rbxm_posts?select=id,name,description,file_type,creator,tags,created_at
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+      <button class="try-btn" onclick="tryEndpoint(this, 'rbxm_posts', '&select=id,name,description,file_type,creator,tags,created_at')">▶ Try it</button>
+      <div class="try-result"></div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="section-title">Users</div>
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/users?username=eq.{username}</span>
+      <span class="endpoint-desc">Fetch user profile</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Returns public profile data of a user. Sensitive fields (password, protect_me, session_token) are never exposed.</p>
+      <p class="code-label">Example Request</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /users?username=eq.LuaLandHub&select=username,display_name,bio,avatar_url,followers,verified
+apikey: YOUR_API_KEY
+Authorization: Bearer YOUR_API_KEY</pre>
+      </div>
+      <p class="code-label">Safe Response Fields</p>
+      <div style="background:rgba(176,38,255,0.04);border-radius:8px;padding:0.75rem;margin-top:0.5rem;">
+        <div class="schema-field"><span class="schema-key">username</span><span class="schema-type">string</span><span class="schema-desc">Unique username</span></div>
+        <div class="schema-field"><span class="schema-key">display_name</span><span class="schema-type">string</span><span class="schema-desc">Display name</span></div>
+        <div class="schema-field"><span class="schema-key">bio</span><span class="schema-type">string</span><span class="schema-desc">User bio</span></div>
+        <div class="schema-field"><span class="schema-key">avatar_url</span><span class="schema-type">string</span><span class="schema-desc">Avatar image URL</span></div>
+        <div class="schema-field"><span class="schema-key">followers</span><span class="schema-type">number</span><span class="schema-desc">Follower count</span></div>
+        <div class="schema-field"><span class="schema-key">verified</span><span class="schema-type">boolean</span><span class="schema-desc">Verified status</span></div>
+      </div>
+      <button class="try-btn" onclick="tryEndpoint(this, 'users', '&select=username,display_name,bio,avatar_url,followers,verified&limit=5')">▶ Try it (first 5 users)</button>
+      <div class="try-result"></div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="section-title">Search</div>
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get">GET</span>
+      <span class="endpoint-path">/posts?title=ilike.*{query}*</span>
+      <span class="endpoint-desc">Full-text search</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;opacity:0.7;margin-top:0.75rem;">Use <code style="font-family:monospace;background:rgba(176,38,255,0.1);padding:1px 5px;border-radius:4px;">ilike.*query*</code> for case-insensitive partial search across any table.</p>
+      <p class="code-label">Search Require Scripts</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /posts?title=ilike.*admin*
+apikey: YOUR_API_KEY</pre>
+      </div>
+      <p class="code-label">Search Executors</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /executor_posts?title=ilike.*fast*
+apikey: YOUR_API_KEY</pre>
+      </div>
+      <p class="code-label">Search Rbxm</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>GET /rbxm_posts?name=ilike.*tower*&select=id,name,file_type,creator
+apikey: YOUR_API_KEY</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- CODE EXAMPLES -->
+  <div class="section-title">Code Examples</div>
+
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get" style="background:rgba(56,189,248,0.15);color:#38bdf8;border-color:rgba(56,189,248,0.3);">JS</span>
+      <span class="endpoint-path">JavaScript / Fetch</span>
+      <span class="endpoint-desc">Browser or Node.js</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>const API_KEY = 'YOUR_API_KEY';
+const BASE = 'https://zcioapswxzqttijygctt.supabase.co/rest/v1';
+
+async function getScripts(type = null) {
+  let url = `${BASE}/posts?select=*&order=created_at.desc`;
+  if (type) url += `&type=eq.${type}`;
+
+  const res = await fetch(url, {
+    headers: {
+      'apikey': API_KEY,
+      'Authorization': `Bearer ${API_KEY}`
+    }
+  });
+  return await res.json();
+}
+
+// Usage
+const scripts = await getScripts('Abilities');
+console.log(scripts);</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint-card">
+    <div class="endpoint-header" onclick="toggleEndpoint(this)">
+      <span class="method-badge method-get" style="background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.3);">LUA</span>
+      <span class="endpoint-path">Roblox / HttpService</span>
+      <span class="endpoint-desc">Use in Roblox Studio</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre>local HttpService = game:GetService("HttpService")
+local API_KEY = "YOUR_API_KEY"
+local BASE = "https://zcioapswxzqttijygctt.supabase.co/rest/v1"
+
+local function getScripts(scriptType)
+    local url = BASE .. "/posts?select=title,code,type&order=created_at.desc"
+    if scriptType then
+        url = url .. "&type=eq." .. scriptType
+    end
+
+    local response = HttpService:RequestAsync({
+        Url = url,
+        Method = "GET",
+        Headers = {
+            ["apikey"] = API_KEY,
+            ["Authorization"] = "Bearer " .. API_KEY
+        }
+    })
+
+    if response.Success then
+        return HttpService:JSONDecode(response.Body)
+    end
+    return nil
+end
+
+local scripts = getScripts("Abilities")
+print(scripts)</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rate Limits -->
+  <div class="section-title">Rate Limits & Rules</div>
+  <div style="background:var(--surface);border:1px solid rgba(176,38,255,0.15);border-radius:var(--radius);padding:1.25rem;">
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;line-height:1.6;opacity:0.85;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span><strong>Read-only</strong> — GET requests only. POST, PATCH, DELETE are blocked.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span><strong>Max 100 results</strong> per request. Use <code style="background:rgba(176,38,255,0.1);padding:1px 5px;border-radius:4px;">limit</code> and <code style="background:rgba(176,38,255,0.1);padding:1px 5px;border-radius:4px;">offset</code> for pagination.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span><strong>Do not expose</strong> your API key publicly. Keep it server-side or in private scripts.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span><strong>Abuse will result in key revocation.</strong> Do not spam requests or use for unauthorized purposes.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-footer">
+    LuaLand.RSL API v1.0 — Managed by LuaLandHub<br>
+    <a href="https://angelo-gitland.github.io/lualandrsl" style="opacity:0.7;">← Back to LuaLand.RSL</a>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://zcioapswxzqttijygctt.supabase.co/rest/v1';
+let userApiKey = '';
+
+function setApiKey() {
+  const input = document.getElementById('demo-api-key');
+  userApiKey = input.value.trim();
+  const status = document.getElementById('api-key-status');
+  if(userApiKey) {
+    status.textContent = '✓ API key set — you can now use Try it buttons';
+    status.style.color = '#22c55e';
+  } else {
+    status.textContent = 'No key set';
+    status.style.color = '';
+  }
+}
+
+function toggleEndpoint(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+async function tryEndpoint(btn, table, extra) {
+  const resultEl = btn.nextElementSibling;
+  if(!userApiKey) {
+    resultEl.style.display = 'block';
+    resultEl.textContent = '⚠ Please set your API key first.';
+    resultEl.style.color = '#f59e0b';
+    return;
+  }
+  btn.textContent = '⏳ Loading...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/${table}?limit=3&order=created_at.desc${extra}`, {
+      headers: {
+        'apikey': userApiKey,
+        'Authorization': `Bearer ${userApiKey}`
+      }
+    });
+    const data = await res.json();
+    resultEl.style.display = 'block';
+    resultEl.style.color = res.ok ? '#a3e635' : '#ef4444';
+    resultEl.textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    resultEl.style.display = 'block';
+    resultEl.textContent = 'Error: ' + e.message;
+    resultEl.style.color = '#ef4444';
+  }
+  btn.textContent = '▶ Try it';
+  btn.disabled = false;
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+</script>
+</body>
+</html>
