@@ -405,12 +405,12 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       <button class="nav-link" data-target="Require_Scripts">Require_Scripts</button>
       <button class="nav-link" data-target="client_scripts">Client_Scripts</button>
       <button class="nav-link" data-target="executors">Executors</button>
+      <button class="nav-link" id="nav-forum-btn" data-target="forum">Forum</button>
       <button class="nav-link" data-target="friends">Friends</button>
       <button class="nav-link" data-target="notifications">Notifications <span id="nav-notif-badge" class="hidden ml-1 bg-red-500 text-white text-[8px] font-black rounded-full px-1">0</span></button>
       <button class="nav-link active" data-target="account">Account</button>
       <button class="nav-link hidden" id="nav-reports-btn" data-target="reports">Reports</button>
       <button class="nav-link hidden" id="nav-database-btn" data-target="database">Database</button>
-      <button class="nav-link" id="nav-forum-btn" data-target="forum">Forum</button>
     </nav>
   </header>
 
@@ -741,10 +741,16 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       <input type="file" id="forum-file-input" style="display:none">
       <!-- Camera modal -->
       <div id="forum-camera-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
-        <video id="forum-camera-video" autoplay playsinline style="width:100%;max-width:400px;border-radius:12px;border:2px solid rgba(176,38,255,0.4);"></video>
+        <div style="position:relative;width:100%;max-width:400px;">
+          <video id="forum-camera-video" autoplay playsinline style="width:100%;border-radius:12px;border:2px solid rgba(176,38,255,0.4);display:block;"></video>
+          <!-- Switch camera button -->
+          <button onclick="forumSwitchCamera()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);border:1px solid rgba(176,38,255,0.4);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"/><path d="M3.51 15a9 9 0 0 0 14.85 3.36L23 14"/></svg>
+          </button>
+        </div>
         <div style="display:flex;gap:12px;">
-          <button onclick="forumConfirmCamera()" style="background:#b026ff;border:none;border-radius:12px;padding:12px 28px;color:#fff;font-family:'Aleo',serif;font-weight:900;font-size:14px;cursor:pointer;">Confirm</button>
-          <button onclick="forumCloseCamera()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:12px 28px;color:#ef4444;font-family:'Aleo',serif;font-weight:700;font-size:14px;cursor:pointer;">Close</button>
+          <button onclick="forumConfirmCamera()" style="background:#b026ff;border:none;border-radius:12px;padding:12px 28px;color:#fff;font-family:'Aleo',serif;font-weight:900;font-size:14px;cursor:pointer;text-shadow:none;">Confirm</button>
+          <button onclick="forumCloseCamera()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:12px 28px;color:#ef4444;font-family:'Aleo',serif;font-weight:700;font-size:14px;cursor:pointer;text-shadow:none;">Close</button>
         </div>
         <canvas id="forum-camera-canvas" style="display:none;"></canvas>
       </div>
@@ -3063,9 +3069,8 @@ function closeIntro() {
 // ══ FORUM TAB ══
 const FORUM_POLL_INTERVAL = 5000;
 let forumPollTimer = null;
-let forumLastMsgId = null;
 let forumCameraStream = null;
-let forumEditingId = null;
+let forumCameraFacing = 'user'; // front cam default
 
 async function renderForum() {
   if(!APP.currentUser) return;
@@ -3074,18 +3079,17 @@ async function renderForum() {
   forumPollTimer = setInterval(loadForumMessages, FORUM_POLL_INTERVAL);
 }
 
-async function loadForumMessages(append=false) {
+async function loadForumMessages() {
   const container = document.getElementById('forum-messages');
   if(!container) return;
   const loading = document.getElementById('forum-loading');
-  if(loading) loading.style.display='none';
+  if(loading) loading.style.display = 'none';
 
-  let q = 'select=*&order=created_at.asc&limit=100';
   let msgs = [];
-  try { msgs = await sbGet('forum_messages', q); } catch(e) { msgs=[]; }
-  if(!Array.isArray(msgs)) msgs=[];
+  try { msgs = await sbGet('forum_messages','select=*&order=created_at.asc&limit=100'); } catch(e) { msgs=[]; }
+  if(!Array.isArray(msgs)) msgs = [];
 
-  const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+  const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
   container.innerHTML = '';
 
   msgs.forEach(msg => {
@@ -3093,9 +3097,7 @@ async function loadForumMessages(append=false) {
     if(el) container.appendChild(el);
   });
 
-  if(wasAtBottom || !append) {
-    container.scrollTop = container.scrollHeight;
-  }
+  if(wasAtBottom) container.scrollTop = container.scrollHeight;
 }
 
 function parseMarkdown(text) {
@@ -3115,9 +3117,10 @@ function parseMarkdown(text) {
 function buildForumMessage(msg) {
   const isOwn = msg.username === APP.currentUser;
   const isPrivate = msg.is_private;
-  const isAdmin = APP.isAdmin;
-  // Hide private messages from others (only owner + admin can see)
-  if(isPrivate && !isOwn && !isAdmin) return null;
+  // Private = only owner + dev (admin) can see
+  if(isPrivate && !isOwn && !APP.isAdmin) return null;
+  // Commands also visible to dev
+  if(msg.message_type === 'command' && !isOwn && !APP.isAdmin) return null;
 
   const div = document.createElement('div');
   div.className = 'forum-msg' + (isOwn ? ' own' : '');
@@ -3125,51 +3128,75 @@ function buildForumMessage(msg) {
 
   const avatar = msg.user_avatar || DEFAULT_AVATAR;
   const username = msg.username || 'Unknown';
-  const text = msg.is_deleted ? '(This message was deleted)' : (msg.text||'');
-  const edited = msg.is_edited && !msg.is_deleted;
-  const isLong = text.length > 200;
+  const rawText = msg.is_deleted ? '(This message was deleted)' : (msg.text||'');
+  const isLong = rawText.length > 250;
   const msgId = 'fmsg-' + msg.id;
-  const time = new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const time = new Date(msg.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
-  const parsedText = msg.is_deleted ? '<em>(This message was deleted)</em>' : parseMarkdown(text);
+  // Build content based on message type
+  let bubbleContent = '';
 
-  // Version buttons (if message has version_request)
-  let versionBtns = '';
-  if(msg.message_type === 'version_request' && (isOwn || isAdmin)) {
-    versionBtns = `
+  if(msg.message_type === 'image') {
+    // Show actual image embed
+    bubbleContent = `<img src="${msg.text}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;object-fit:cover;cursor:pointer;" onclick="window.open(this.src,'_blank')" onerror="this.style.display='none'">`;
+  } else if(msg.message_type === 'file') {
+    // Show file attachment card
+    const fname = msg.file_name || 'attachment';
+    bubbleContent = `<div style="display:flex;align-items:center;gap:8px;background:rgba(176,38,255,0.08);border:1px solid rgba(176,38,255,0.2);border-radius:8px;padding:8px 12px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#b026ff;">${fname}</div>
+        ${msg.file_data ? `<a href="${msg.file_data}" download="${fname}" style="font-size:10px;color:rgba(176,38,255,0.6);">Download</a>` : ''}
+      </div>
+    </div>`;
+  } else if(msg.message_type === 'request') {
+    // Decrypt/deobf request — public, visible to all
+    const parsed = parseMarkdown(rawText);
+    bubbleContent = `<div class="forum-bubble-text${isLong?' collapsed':''}" id="${msgId}">${parsed}</div>`;
+    if(isLong) bubbleContent += `<span class="forum-read-more" onclick="forumToggleExpand('${msgId}',this)">Read more</span>`;
+  } else if(msg.message_type === 'version_request') {
+    const parsed = parseMarkdown(rawText);
+    bubbleContent = `<div class="forum-bubble-text" id="${msgId}">${parsed}</div>
       <div style="margin-top:6px;">
-        <button class="forum-version-btn" onclick="forumSelectVersion('${msg.id}','LuaLand Cracker V1')">LuaLand Cracker V1</button>
-        <button class="forum-version-btn" onclick="forumSelectVersion('${msg.id}','LuaLand Cracker V2')">LuaLand Cracker V2</button>
+        <button class="forum-version-btn" onclick="forumSelectVersion('LuaLand Cracker V1')">LuaLand Cracker V1</button>
+        <button class="forum-version-btn" onclick="forumSelectVersion('LuaLand Cracker V2')">LuaLand Cracker V2</button>
       </div>`;
+  } else {
+    // Normal message
+    const parsed = msg.is_deleted ? '<em>(This message was deleted)</em>' : parseMarkdown(rawText);
+    bubbleContent = `<div class="forum-bubble-text${isLong?' collapsed':''}" id="${msgId}">${parsed}</div>`;
+    if(isLong) bubbleContent += `<span class="forum-read-more" onclick="forumToggleExpand('${msgId}',this)">Read more</span>`;
   }
 
-  // Actions (only own messages)
+  const edited = msg.is_edited && !msg.is_deleted;
+  const isCommand = ['command','version_request','request'].includes(msg.message_type);
+
+  // Edit/delete actions — only for normal messages by owner, NOT commands
   let actions = '';
-  if(isOwn && !msg.is_deleted) {
-    actions = `
-      <div class="forum-msg-actions">
-        <button class="forum-action-btn" onclick="forumStartEdit('${msg.id}')" title="Edit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-        </button>
-        <button class="forum-action-btn" onclick="forumDeleteMsg('${msg.id}')" title="Delete">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-        </button>
-        <span class="forum-time">${time}</span>
-      </div>`;
+  if(isOwn && !msg.is_deleted && !isCommand) {
+    actions = `<div class="forum-msg-actions">
+      <button class="forum-action-btn" onclick="forumStartEdit('${msg.id}')" title="Edit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      </button>
+      <button class="forum-action-btn" onclick="forumDeleteMsg('${msg.id}')" title="Delete">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+      <span class="forum-time">${time}</span>
+    </div>`;
   } else {
     actions = `<span class="forum-time" style="padding:2px 4px;">${time}</span>`;
   }
 
+  const privateLabel = isPrivate ? `<span class="forum-private-label">Only you${APP.isAdmin?'':' (and dev)'} can see this</span>` : '';
+
   div.innerHTML = `
     <img class="forum-avatar" src="${avatar}" onclick="viewUserProfile('${username}')">
     <div class="forum-bubble-wrap">
-      <span class="forum-username">${username}${getUserBadges(username, false)}</span>
+      <span class="forum-username">${username}${getUserBadges(username,false)}</span>
       <div class="forum-bubble${isPrivate?' private':''}${msg.is_deleted?' forum-deleted':''}">
-        ${isPrivate ? '<span class="forum-private-label">Only you (and dev) can see this</span>' : ''}
-        <div class="forum-bubble-text${isLong?' collapsed':''}" id="${msgId}">${parsedText}</div>
-        ${isLong ? `<span class="forum-read-more" onclick="forumToggleExpand('${msgId}',this)">Read more</span>` : ''}
+        ${privateLabel}
+        ${bubbleContent}
         ${edited ? '<div class="forum-edited">Edited</div>' : ''}
-        ${versionBtns}
         <div id="forum-edit-area-${msg.id}"></div>
       </div>
       ${actions}
@@ -3180,13 +3207,8 @@ function buildForumMessage(msg) {
 function forumToggleExpand(id, btn) {
   const el = document.getElementById(id);
   if(!el) return;
-  if(el.classList.contains('collapsed')) {
-    el.classList.remove('collapsed');
-    btn.textContent = 'Show less';
-  } else {
-    el.classList.add('collapsed');
-    btn.textContent = 'Read more';
-  }
+  el.classList.toggle('collapsed');
+  btn.textContent = el.classList.contains('collapsed') ? 'Read more' : 'Show less';
 }
 
 async function forumSend() {
@@ -3195,14 +3217,16 @@ async function forumSend() {
   if(!text || !APP.currentUser) return;
   if(text.length > 500) return showToast('Message too long (max 500 chars).');
 
-  // Check for commands
   if(text.startsWith('!')) {
     await handleForumCommand(text);
-    inp.value = ''; autoResizeForumInput(inp);
+    inp.value = '';
+    inp.style.height = '44px';
     return;
   }
 
-  inp.value = ''; autoResizeForumInput(inp);
+  inp.value = '';
+  inp.style.height = '44px';
+
   await sbPost('forum_messages', {
     username: APP.currentUser,
     user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
@@ -3214,42 +3238,49 @@ async function forumSend() {
 
 async function handleForumCommand(cmd) {
   const c = cmd.toLowerCase().trim();
-  let replyText = '';
-  let msgType = 'command';
 
-  if(c === '!decrypt') {
-    replyText = `## 🔓 !decrypt\n\n**Send a file that you want to decrypt.** Developers will decrypt the file you provided — not a bot!`;
-  } else if(c === '!deobf') {
-    replyText = `## 🔍 !deobf\n\n**Send a file that you want to deobfuscate.** Developers will deobfuscate the file you provided — not a bot!`;
-  } else if(c === '!version') {
-    msgType = 'version_request';
-    replyText = `## ⚙️ !version\n\n**Choose a version that you want the owner to use:**`;
+  if(c === '!version' || c === '!versions') {
+    // Version request — private to user + dev
+    await sbPost('forum_messages', {
+      username: APP.currentUser,
+      user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+      text: `## ⚙️ Version Request\n\n**Request From:** ${APP.currentUser}\n\n**Choose a version:**`,
+      is_private: true, is_edited: false, is_deleted: false,
+      message_type: 'version_request'
+    });
+  } else if(c === '!decrypt' || c === '!deobf' || c === '!deobfuscate') {
+    // Ask user to attach file — send a prompt message first (private)
+    const cmdName = c === '!decrypt' ? '!decrypt' : '!deobfuscate';
+    await sbPost('forum_messages', {
+      username: APP.currentUser,
+      user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+      text: `_Please attach the file you want to ${c === '!decrypt' ? 'decrypt' : 'deobfuscate'} using the + button, then it will be sent as a request._`,
+      is_private: true, is_edited: false, is_deleted: false,
+      message_type: 'command'
+    });
+    // Store pending command for when file is attached
+    window._forumPendingCmd = cmdName;
+    showToast('Now attach your file using the + button');
   } else {
-    replyText = `# 🚀 Commands\n\n**LuaLand.RSL/Forum/cmds > Supported Commands:**\n\n* !decrypt\n* !deobf\n* !version\n\n**Those 3 are the available commands, type in chat to use.**`;
+    // Unknown — show command list privately
+    await sbPost('forum_messages', {
+      username: APP.currentUser,
+      user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+      text: `# 🚀 Commands\n\n**LuaLand.RSL/Forum/cmds > Supported Commands:**\n\n* !decrypt\n* !deobf\n* !version\n\n**Those 3 are the available commands, type in chat to use.**`,
+      is_private: true, is_edited: false, is_deleted: false,
+      message_type: 'command'
+    });
   }
-
-  await sbPost('forum_messages', {
-    username: APP.currentUser,
-    user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
-    text: replyText,
-    is_private: true,
-    is_edited: false,
-    is_deleted: false,
-    message_type: msgType
-  });
   loadForumMessages();
 }
 
-async function forumSelectVersion(msgId, version) {
-  // Send as private message visible to user + dev
+async function forumSelectVersion(version) {
   await sbPost('forum_messages', {
     username: APP.currentUser,
     user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
-    text: `**Version selected:** ${version}`,
-    is_private: true,
-    is_edited: false,
-    is_deleted: false,
-    message_type: 'version_selected'
+    text: `**Request From:** ${APP.currentUser}\n**Version Selected:** ${version}`,
+    is_private: true, is_edited: false, is_deleted: false,
+    message_type: 'command'
   });
   showToast('Version request sent to developer!');
   loadForumMessages();
@@ -3259,11 +3290,9 @@ function forumStartEdit(msgId) {
   const area = document.getElementById('forum-edit-area-' + msgId);
   const textEl = document.getElementById('fmsg-' + msgId);
   if(!area || !textEl) return;
-
-  // Get current plain text
-  const rows = textEl.innerText;
+  const rawText = textEl.innerText;
   area.innerHTML = `
-    <input class="forum-edit-input" id="forum-edit-inp-${msgId}" value="${rows.replace(/"/g,'&quot;')}" maxlength="500">
+    <input class="forum-edit-input" id="forum-edit-inp-${msgId}" value="${rawText.replace(/"/g,'&quot;')}" maxlength="500">
     <div style="display:flex;gap:6px;margin-top:4px;">
       <button onclick="forumSaveEdit('${msgId}')" style="background:#b026ff;border:none;border-radius:8px;padding:5px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Save</button>
       <button onclick="forumCancelEdit('${msgId}')" style="background:transparent;border:1px solid rgba(176,38,255,0.3);border-radius:8px;padding:5px 12px;color:#b026ff;font-size:11px;font-weight:700;cursor:pointer;">Cancel</button>
@@ -3282,18 +3311,19 @@ async function forumSaveEdit(msgId) {
   if(!inp) return;
   const newText = inp.value.trim();
   if(!newText) return;
-  await sbPatch('forum_messages', `id=eq.${msgId}`, {text:newText, is_edited:true});
+  await sbPatch('forum_messages', `id=eq.${msgId}`, {text: newText, is_edited: true});
   forumCancelEdit(msgId);
   loadForumMessages();
 }
 
 async function forumDeleteMsg(msgId) {
-  await sbPatch('forum_messages', `id=eq.${msgId}`, {is_deleted:true, text:'', is_edited:false});
+  await sbPatch('forum_messages', `id=eq.${msgId}`, {is_deleted: true, text: '', is_edited: false});
   loadForumMessages();
 }
 
 function forumKeyDown(e) {
-  if(e.key==='Enter' && !e.shiftKey) {
+  // Enter sends, Shift+Enter = new line
+  if(e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     forumSend();
   }
@@ -3306,13 +3336,12 @@ function autoResizeForumInput(el) {
 
 function toggleForumPlusMenu(e) {
   e.stopPropagation();
-  const menu = document.getElementById('forum-plus-menu');
-  menu.classList.toggle('open');
+  document.getElementById('forum-plus-menu').classList.toggle('open');
 }
 
 document.addEventListener('click', () => {
-  const menu = document.getElementById('forum-plus-menu');
-  if(menu) menu.classList.remove('open');
+  const m = document.getElementById('forum-plus-menu');
+  if(m) m.classList.remove('open');
 });
 
 function forumAttachFile() {
@@ -3320,41 +3349,104 @@ function forumAttachFile() {
   document.getElementById('forum-file-input').click();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// File attach handler — set up after DOM ready
+setTimeout(() => {
   const fi = document.getElementById('forum-file-input');
-  if(fi) {
-    fi.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if(!file || !APP.currentUser) return;
-      showToast('File attached: ' + file.name + ' (sent as message)');
-      await sbPost('forum_messages', {
-        username: APP.currentUser,
-        user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
-        text: '📎 Attached file: ' + file.name,
-        is_private: false, is_edited: false, is_deleted: false,
-        message_type: 'file'
-      });
-      loadForumMessages();
-      e.target.value = '';
-    });
-  }
-});
+  if(!fi) return;
+  fi.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file || !APP.currentUser) return;
+    e.target.value = '';
+
+    const isImage = file.type.startsWith('image/');
+    const hasPendingCmd = window._forumPendingCmd;
+
+    if(hasPendingCmd) {
+      // Send as a public request with command info
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const cmdName = window._forumPendingCmd;
+        window._forumPendingCmd = null;
+        const msgText = `**Request From:** ${APP.currentUser}\n**Command Used:** ${cmdName}\n**File:** ${file.name}`;
+        await sbPost('forum_messages', {
+          username: APP.currentUser,
+          user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+          text: msgText,
+          is_private: false,
+          is_edited: false, is_deleted: false,
+          message_type: 'request',
+          file_name: file.name,
+          file_data: isImage ? ev.target.result : null
+        });
+        loadForumMessages();
+      };
+      reader.readAsDataURL(file);
+    } else if(isImage) {
+      // Embed image directly
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        await sbPost('forum_messages', {
+          username: APP.currentUser,
+          user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+          text: ev.target.result,
+          is_private: false, is_edited: false, is_deleted: false,
+          message_type: 'image',
+          file_name: file.name
+        });
+        loadForumMessages();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Non-image file — show file card
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        await sbPost('forum_messages', {
+          username: APP.currentUser,
+          user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+          text: `📎 ${file.name}`,
+          is_private: false, is_edited: false, is_deleted: false,
+          message_type: 'file',
+          file_name: file.name,
+          file_data: ev.target.result
+        });
+        loadForumMessages();
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}, 500);
 
 async function forumOpenCamera() {
   document.getElementById('forum-plus-menu').classList.remove('open');
   try {
-    forumCameraStream = await navigator.mediaDevices.getUserMedia({video:true});
+    if(forumCameraStream) { forumCameraStream.getTracks().forEach(t=>t.stop()); }
+    forumCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: forumCameraFacing }
+    });
     const video = document.getElementById('forum-camera-video');
     video.srcObject = forumCameraStream;
-    document.getElementById('forum-camera-modal').style.display='flex';
+    document.getElementById('forum-camera-modal').style.display = 'flex';
   } catch(e) {
     showToast('Camera permission denied or not available.');
   }
 }
 
+async function forumSwitchCamera() {
+  forumCameraFacing = forumCameraFacing === 'user' ? 'environment' : 'user';
+  if(forumCameraStream) { forumCameraStream.getTracks().forEach(t=>t.stop()); }
+  try {
+    forumCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: forumCameraFacing }
+    });
+    document.getElementById('forum-camera-video').srcObject = forumCameraStream;
+  } catch(e) {
+    showToast('Could not switch camera.');
+  }
+}
+
 function forumCloseCamera() {
   if(forumCameraStream) { forumCameraStream.getTracks().forEach(t=>t.stop()); forumCameraStream=null; }
-  document.getElementById('forum-camera-modal').style.display='none';
+  document.getElementById('forum-camera-modal').style.display = 'none';
 }
 
 async function forumConfirmCamera() {
@@ -3363,7 +3455,7 @@ async function forumConfirmCamera() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  const imgData = canvas.toDataURL('image/jpeg', 0.7);
+  const imgData = canvas.toDataURL('image/jpeg', 0.8);
   forumCloseCamera();
   if(!APP.currentUser) return;
   await sbPost('forum_messages', {
@@ -3378,9 +3470,9 @@ async function forumConfirmCamera() {
 
 function forumShowCommands() {
   document.getElementById('forum-plus-menu').classList.remove('open');
-  // Show commands info privately
   handleForumCommand('!help');
 }
+
 
 const MUSIC_BASE = 'https://angelo-gitland.github.io/lualandrsl/music/';
 const MUSIC_LIST = [
