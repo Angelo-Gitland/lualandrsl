@@ -409,6 +409,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       <button class="nav-link" data-target="friends">Friends</button>
       <button class="nav-link" data-target="notifications">Notifications <span id="nav-notif-badge" class="hidden ml-1 bg-red-500 text-white text-[8px] font-black rounded-full px-1">0</span></button>
       <button class="nav-link active" data-target="account">Account</button>
+      <button class="nav-link" id="nav-dumper-btn" data-target="dumper">Dumper</button>
       <button class="nav-link hidden" id="nav-reports-btn" data-target="reports">Reports</button>
       <button class="nav-link hidden" id="nav-database-btn" data-target="database">Database</button>
     </nav>
@@ -655,10 +656,15 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         .forum-read-more{font-size:11px;color:rgba(176,38,255,0.6);cursor:pointer;margin-top:4px;display:inline-block;}
         .forum-edited{font-size:9px;color:rgba(176,38,255,0.4);margin-top:2px;font-style:italic;}
         .forum-deleted .forum-bubble-text{color:rgba(176,38,255,0.3)!important;font-style:italic;}
-        .forum-msg-actions{display:none;gap:6px;align-items:center;padding:2px 4px;}
-        .forum-bubble-wrap:hover .forum-msg-actions{display:flex;}
-        .forum-action-btn{background:none;border:none;cursor:pointer;padding:3px;border-radius:6px;opacity:0.5;transition:opacity 0.2s;}
-        .forum-action-btn:hover{opacity:1;background:rgba(176,38,255,0.1);}
+        .forum-msg-actions{display:none;gap:6px;align-items:center;padding:4px 6px;background:rgba(10,10,15,0.95);border:1px solid rgba(176,38,255,0.25);border-radius:10px;position:absolute;bottom:calc(100% + 4px);right:0;z-index:50;animation:fadeIn 0.15s ease;}
+        .forum-msg-actions.visible{display:flex;}
+        .forum-msg-actions.own-actions{right:auto;left:0;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+        .forum-action-btn{background:none;border:none;cursor:pointer;padding:5px 8px;border-radius:7px;opacity:0.8;transition:all 0.15s;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#b026ff;}
+        .forum-action-btn:hover{opacity:1;background:rgba(176,38,255,0.15);}
+        .forum-action-btn.del{color:#ef4444;}
+        .forum-action-btn.del:hover{background:rgba(239,68,68,0.1);}
+        .forum-bubble-wrap{position:relative;}
         .forum-time{font-size:9px;color:rgba(176,38,255,0.3);padding:0 4px;}
         .forum-private-label{font-size:9px;color:rgba(176,38,255,0.4);padding:0 4px;font-style:italic;}
         /* Markdown in forum */
@@ -675,7 +681,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         .forum-version-btn:active{transform:scale(0.96);}
         /* Input bar */
         #forum-input-bar{background:#0a0a0a;border-top:1px solid rgba(176,38,255,0.15);padding:10px 12px;display:flex;align-items:flex-end;gap:8px;flex-shrink:0;}
-        #forum-text-input{flex:1;background:#000;border:1.5px solid #b026ff;border-radius:12px;padding:10px 14px;font-family:'Aleo',serif;font-size:14px;color:#b026ff;resize:none;min-height:44px;max-height:120px;overflow-y:auto;outline:none;line-height:1.5;}
+        #forum-text-input{flex:1;background:#000;border:1.5px solid #b026ff;border-radius:12px;padding:10px 14px;font-family:'Aleo',serif;font-size:14px;color:#b026ff;resize:none;height:44px;max-height:198px;overflow-y:hidden;outline:none;line-height:1.5;word-wrap:break-word;white-space:pre-wrap;}
         #forum-text-input::placeholder{color:rgba(176,38,255,0.35);}
         .forum-icon-btn{background:rgba(176,38,255,0.1);border:1px solid rgba(176,38,255,0.3);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s;}
         .forum-icon-btn:hover{background:rgba(176,38,255,0.2);}
@@ -721,16 +727,19 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
       </div>
 
+      <!-- File chip display area (above input) -->
+      <div id="forum-file-chip-row" style="display:none;padding:6px 12px 0;background:#0a0a0a;flex-wrap:wrap;gap:6px;"></div>
+
       <!-- Input bar -->
       <div id="forum-input-bar" style="position:relative;">
         <!-- Plus button -->
         <button class="forum-icon-btn" id="forum-plus-btn" onclick="toggleForumPlusMenu(event)">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <!-- Text input -->
+        <!-- Text input — Enter = newline, send via button only -->
         <textarea id="forum-text-input" placeholder="Type Anything..." maxlength="500" rows="1"
-          oninput="autoResizeForumInput(this)"
-          onkeydown="forumKeyDown(event)"></textarea>
+          style="white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;"
+          oninput="autoResizeForumInput(this)"></textarea>
         <!-- Send button -->
         <button class="forum-icon-btn" onclick="forumSend()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -754,6 +763,148 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         </div>
         <canvas id="forum-camera-canvas" style="display:none;"></canvas>
       </div>
+
+      <!-- Fullscreen Image Viewer -->
+      <div id="forum-img-fullscreen" onclick="forumCloseFullscreen()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:500;align-items:center;justify-content:center;cursor:zoom-out;">
+        <img id="forum-img-fs-src" src="" style="max-width:95vw;max-height:90vh;object-fit:contain;border-radius:8px;user-select:none;">
+        <button onclick="forumCloseFullscreen()" style="position:absolute;top:16px;right:16px;background:rgba(176,38,255,0.2);border:1px solid rgba(176,38,255,0.4);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- File Content Viewer -->
+      <div id="forum-file-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:500;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(176,38,255,0.2);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span id="forum-fv-name" style="font-size:13px;font-weight:700;color:#b026ff;"></span>
+            <span id="forum-fv-size" style="font-size:10px;color:rgba(176,38,255,0.5);"></span>
+          </div>
+          <button onclick="forumCloseFileViewer()" style="background:rgba(176,38,255,0.1);border:1px solid rgba(176,38,255,0.3);border-radius:8px;padding:6px 12px;color:#b026ff;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
+        </div>
+        <pre id="forum-fv-content" style="flex:1;overflow:auto;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#b026ff;line-height:1.6;margin:0;white-space:pre-wrap;word-break:break-word;"></pre>
+      </div>
+    </div>
+
+
+    <!-- TAB: DUMPER -->
+    <div id="tab-dumper" class="tab-content" style="background:#000;flex-direction:column;overflow:hidden;">
+      <style>
+        #dumper-wrap{display:flex;flex-direction:column;height:100%;padding:1rem;gap:10px;overflow-y:auto;background:#000;}
+        #dumper-header{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+        #dumper-header h2{font-size:1.2rem;font-weight:900;color:#b026ff;text-shadow:0 0 8px rgba(176,38,255,0.4);}
+        .dumper-textarea{width:100%;background:#000;border:1.5px solid #b026ff;border-radius:10px;padding:10px 12px;font-family:'JetBrains Mono',monospace,serif;font-size:12px;color:#b026ff;resize:none;height:180px;max-height:180px;outline:none;line-height:1.6;white-space:pre;overflow:auto;overflow-wrap:normal;}
+        .dumper-textarea::placeholder{color:rgba(176,38,255,0.3);}
+        .dumper-btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .dumper-btn{display:flex;align-items:center;gap:6px;background:rgba(176,38,255,0.1);border:1px solid rgba(176,38,255,0.35);border-radius:8px;padding:8px 14px;color:#b026ff;font-family:'Aleo',serif;font-weight:700;font-size:12px;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
+        .dumper-btn:hover{background:rgba(176,38,255,0.2);}
+        .dumper-btn:active{transform:scale(0.96);}
+        .dumper-btn.primary{background:#b026ff;color:#fff;border-color:#b026ff;}
+        .dumper-btn.primary:hover{background:#9a20e0;}
+        .dumper-btn svg{flex-shrink:0;}
+        .dumper-result-wrap{position:relative;height:220px;}
+        .dumper-result{width:100%;height:100%;min-height:160px;background:#000;border:1.5px solid rgba(176,38,255,0.3);border-radius:10px;padding:10px 12px;font-family:'JetBrains Mono',monospace,serif;font-size:12px;color:#b026ff;resize:none;overflow-y:auto;line-height:1.6;white-space:pre-wrap;}
+        .dumper-result::placeholder{color:rgba(176,38,255,0.25);font-style:italic;}
+        /* Number lines wrapper */
+        .dumper-editor-wrap{display:flex;background:#000;border:1.5px solid #b026ff;border-radius:10px;overflow:hidden;height:180px;}
+        .dumper-line-nums{background:#0a0a0a;border-right:1px solid rgba(176,38,255,0.15);padding:10px 8px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(176,38,255,0.35);line-height:1.6;user-select:none;min-width:36px;white-space:pre;}
+        .dumper-editor-wrap textarea{flex:1;background:#000;border:none;padding:10px 12px;font-family:'JetBrains Mono',monospace,serif;font-size:12px;color:#b026ff;resize:none;height:180px;outline:none;line-height:1.6;white-space:pre;overflow:auto;overflow-wrap:normal;}
+        .dumper-editor-wrap textarea::placeholder{color:rgba(176,38,255,0.3);}
+        /* Result number lines */
+        .dumper-result-outer{display:flex;background:#000;border:1.5px solid rgba(176,38,255,0.3);border-radius:10px;overflow:hidden;height:220px;}
+        .dumper-result-outer .dumper-line-nums{background:#0a0a0a;}
+        .dumper-result-outer textarea{flex:1;background:#000;border:none;padding:10px 12px;font-family:'JetBrains Mono',monospace,serif;font-size:12px;color:#b026ff;resize:none;outline:none;line-height:1.6;white-space:pre-wrap;overflow-wrap:break-word;}
+        .dumper-result-outer textarea::placeholder{color:rgba(176,38,255,0.25);font-style:italic;}
+        .dumper-toggle-row{display:flex;align-items:center;gap:8px;}
+        .dumper-toggle-label{font-size:12px;font-weight:700;color:rgba(176,38,255,0.7);}
+        .dumper-toggle{position:relative;width:40px;height:22px;cursor:pointer;}
+        .dumper-toggle input{opacity:0;width:0;height:0;}
+        .dumper-toggle-slider{position:absolute;inset:0;background:rgba(176,38,255,0.15);border:1px solid rgba(176,38,255,0.3);border-radius:22px;transition:0.2s;}
+        .dumper-toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:rgba(176,38,255,0.5);border-radius:50%;transition:0.2s;}
+        .dumper-toggle input:checked + .dumper-toggle-slider{background:rgba(176,38,255,0.3);border-color:#b026ff;}
+        .dumper-toggle input:checked + .dumper-toggle-slider:before{transform:translateX(18px);background:#b026ff;}
+        .dumper-status{font-size:11px;color:rgba(176,38,255,0.5);font-style:italic;min-height:16px;}
+        .dumper-file-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(176,38,255,0.08);border:1px solid rgba(176,38,255,0.25);border-radius:8px;padding:4px 10px;font-size:11px;color:#b026ff;font-weight:700;}
+        .dumper-file-chip button{background:none;border:none;cursor:pointer;color:rgba(176,38,255,0.5);font-size:14px;padding:0;line-height:1;}
+        .dumper-file-chip button:hover{color:#ef4444;}
+      </style>
+
+      <div id="dumper-wrap">
+        <!-- Title -->
+        <div id="dumper-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <h2>Dumper</h2>
+        </div>
+
+        <!-- Input editor -->
+        <div id="dumper-editor-container">
+          <div class="dumper-editor-wrap" id="dumper-editor-wrap" style="display:none;">
+            <div class="dumper-line-nums" id="dumper-line-nums-in">1</div>
+            <textarea id="dumper-input" placeholder="Obfuscated Code..." maxlength="100000" spellcheck="false"
+              oninput="dumperSyncLines('in');dumperSyncLines('out')"
+              onscroll="dumperSyncScroll('in')"
+              style="white-space:pre;overflow-wrap:normal;overflow-x:auto;"></textarea>
+          </div>
+          <textarea id="dumper-input-plain" class="dumper-textarea" placeholder="Obfuscated Code..." maxlength="100000" spellcheck="false" style="display:block;"></textarea>
+        </div>
+
+        <!-- Row 1: Dump + Clear + Copy -->
+        <div class="dumper-btn-row">
+          <!-- Dump Constants -->
+          <button class="dumper-btn primary" onclick="dumperDump()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Dump Constants
+          </button>
+          <!-- Clear -->
+          <button class="dumper-btn" onclick="dumperClear()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            Clear
+          </button>
+          <!-- Copy Output -->
+          <button class="dumper-btn" onclick="dumperCopyOutput()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy Output
+          </button>
+          <!-- Number Lines toggle -->
+          <div class="dumper-toggle-row" style="margin-left:auto;">
+            <span class="dumper-toggle-label">NumberLines</span>
+            <label class="dumper-toggle">
+              <input type="checkbox" id="dumper-numlines-toggle" onchange="dumperToggleLines()">
+              <span class="dumper-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Row 2: Attach File + Check Syntax -->
+        <div class="dumper-btn-row">
+          <!-- Attach File -->
+          <button class="dumper-btn" onclick="dumperAttach()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Attach File
+          </button>
+          <!-- Check Syntax -->
+          <button class="dumper-btn" onclick="dumperCheckSyntax()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Check Syntax
+          </button>
+        </div>
+
+        <!-- File chip -->
+        <div id="dumper-file-chip-area"></div>
+
+        <!-- Status -->
+        <div class="dumper-status" id="dumper-status"></div>
+
+        <!-- Result box -->
+        <div id="dumper-result-container" style="flex:1;display:flex;flex-direction:column;min-height:180px;">
+          <div class="dumper-result-outer" id="dumper-result-outer">
+            <div class="dumper-line-nums" id="dumper-line-nums-out" style="display:none;">1</div>
+            <textarea id="dumper-output" class="dumper-result" readonly placeholder="Env Logger results will appear here!" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <input type="file" id="dumper-file-input" style="display:none;" accept=".lua,.txt,.luac,.js,.json,.xml,.rbxm,.rbxmx,.py,.ts">
+      </div>
     </div>
 
   </main>
@@ -770,7 +921,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
     </div>
     <div class="modal-body flex-1 overflow-y-auto space-y-5 p-5">
       <div class="flex flex-col gap-1">
-        <label class="text-sm font-bold">Thumbnail (Square)</label>
+        <label class="text-sm font-bold">Thumbnail</label>
         <div id="upload-thumb-area" class="w-full aspect-square bg-black border-2 border-dashed border-primary-custom/30 rounded-custom flex items-center justify-center cursor-pointer overflow-hidden relative">
           <img id="upload-thumb-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
           <div id="thumb-confirm-overlay" class="absolute inset-0 bg-black/80 flex items-center justify-center gap-4 hidden z-20">
@@ -797,7 +948,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
       <div><label class="text-sm font-bold" id="label-code">Code Box</label><textarea id="upload-code" class="font-mono text-sm bg-black" placeholder="Place your script here..."></textarea></div>
       <div><label class="text-sm font-bold">Type</label><select id="upload-type"></select></div>
       <div>
-        <label class="text-sm font-bold">Tags (Max 5) - Press Enter</label>
+        <label class="text-sm font-bold">Tags (Max 5) - Press Enter to confirm</label>
         <div id="upload-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
         <input type="text" id="upload-tag-input" placeholder="Add tag...">
       </div>
@@ -817,7 +968,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
     </div>
     <div class="modal-body flex-1 overflow-y-auto space-y-6 p-6">
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-bold">Thumbnail (Square)</label>
+        <label class="text-sm font-bold">Thumbnail</label>
         <div id="exec-thumb-area" class="w-full aspect-square bg-black border-2 border-dashed border-primary-custom/40 rounded-custom flex items-center justify-center overflow-hidden relative cursor-pointer">
           <img id="exec-thumb-preview" class="absolute inset-0 w-full h-full object-cover hidden">
           <div id="exec-thumb-placeholder" class="text-center opacity-60">
@@ -837,13 +988,13 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
           <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— who made this executor?</span>
         </label>
         <input type="text" id="exec-script-creator" placeholder="Creator name..." style="margin-bottom:4px;">
-        <p style="font-size:9px;opacity:0.45;padding:0 4px;color:var(--primary-color)!important;">Pre-filled with your name. Change it if someone else made this.</p>
+        <p style="font-size:9px;opacity:0.45;padding:0 4px;color:var(--primary-color)!important;">Pre-filled with your name. Only change if someone made this not you..</p>
       </div>
       <div><label class="text-sm font-bold">Description</label><textarea id="exec-description" maxlength="500" placeholder="Describe the executor..."></textarea></div>
       <div><label class="text-sm font-bold">Download Link</label><input type="url" id="exec-link" placeholder="Download Link..."></div>
       <div><label class="text-sm font-bold">Type</label><select id="exec-type"><option value="Mobile &amp; Free">Mobile &amp; Free</option><option value="Mobile &amp; Paid">Mobile &amp; Paid</option><option value="PC &amp; Free">PC &amp; Free</option><option value="PC &amp; Paid">PC &amp; Paid</option><option value="Key System">Key System</option><option value="Keyless">Keyless</option></select></div>
       <div>
-        <label class="text-sm font-bold">Tags (Max 5) - Press Enter</label>
+        <label class="text-sm font-bold">Tags (Max 5) - Press Enter to confirm</label>
         <div id="exec-tags-container" class="flex flex-wrap gap-2 mb-2"></div>
         <input type="text" id="exec-tag-input" placeholder="Enter tag...">
       </div>
@@ -1191,6 +1342,7 @@ function switchTab(targetId) {
   if(targetId==='notifications') renderNotificationsTab();
   if(targetId==='database') renderDatabaseTab();
   if(targetId==='forum') renderForum();
+  if(targetId==='dumper') dumperInit();
 }
 
 // ══ AUTH — SUPABASE ══
@@ -3117,9 +3269,7 @@ function parseMarkdown(text) {
 function buildForumMessage(msg) {
   const isOwn = msg.username === APP.currentUser;
   const isPrivate = msg.is_private;
-  // Private = only owner + dev (admin) can see
   if(isPrivate && !isOwn && !APP.isAdmin) return null;
-  // Commands also visible to dev
   if(msg.message_type === 'command' && !isOwn && !APP.isAdmin) return null;
 
   const div = document.createElement('div');
@@ -3132,25 +3282,28 @@ function buildForumMessage(msg) {
   const isLong = rawText.length > 250;
   const msgId = 'fmsg-' + msg.id;
   const time = new Date(msg.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const isCommand = ['command','version_request','request'].includes(msg.message_type);
 
-  // Build content based on message type
   let bubbleContent = '';
 
   if(msg.message_type === 'image') {
-    // Show actual image embed
-    bubbleContent = `<img src="${msg.text}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;object-fit:cover;cursor:pointer;" onclick="window.open(this.src,'_blank')" onerror="this.style.display='none'">`;
+    bubbleContent = `<img src="${msg.text}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;object-fit:cover;cursor:zoom-in;border:1px solid rgba(176,38,255,0.2);" onclick="forumOpenFullscreen(this.src)" onerror="this.parentElement.innerHTML='<span style=\'font-size:11px;opacity:0.4;\'>Image failed to load</span>'">`;
   } else if(msg.message_type === 'file') {
-    // Show file attachment card
     const fname = msg.file_name || 'attachment';
-    bubbleContent = `<div style="display:flex;align-items:center;gap:8px;background:rgba(176,38,255,0.08);border:1px solid rgba(176,38,255,0.2);border-radius:8px;padding:8px 12px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <div>
-        <div style="font-size:12px;font-weight:700;color:#b026ff;">${fname}</div>
-        ${msg.file_data ? `<a href="${msg.file_data}" download="${fname}" style="font-size:10px;color:rgba(176,38,255,0.6);">Download</a>` : ''}
+    const fdata = msg.file_data || '';
+    const byteSize = fdata ? Math.round(fdata.length * 0.75) : 0;
+    const sizeStr = byteSize > 1024 ? (byteSize/1024).toFixed(1)+' KB' : byteSize+' B';
+    const encFname = encodeURIComponent(fname);
+    const encData = encodeURIComponent(fdata.slice(0,200000));
+    bubbleContent = `<div onclick="forumOpenFileViewer('${encFname}','${encData}')" style="display:flex;align-items:center;gap:10px;background:rgba(176,38,255,0.08);border:1px solid rgba(176,38,255,0.2);border-radius:10px;padding:10px 14px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(176,38,255,0.14)'" onmouseout="this.style.background='rgba(176,38,255,0.08)'">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:12px;font-weight:700;color:#b026ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fname}</div>
+        <div style="font-size:10px;color:rgba(176,38,255,0.5);">${sizeStr} — tap to view</div>
       </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2" style="flex-shrink:0;opacity:0.5;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </div>`;
   } else if(msg.message_type === 'request') {
-    // Decrypt/deobf request — public, visible to all
     const parsed = parseMarkdown(rawText);
     bubbleContent = `<div class="forum-bubble-text${isLong?' collapsed':''}" id="${msgId}">${parsed}</div>`;
     if(isLong) bubbleContent += `<span class="forum-read-more" onclick="forumToggleExpand('${msgId}',this)">Read more</span>`;
@@ -3162,32 +3315,27 @@ function buildForumMessage(msg) {
         <button class="forum-version-btn" onclick="forumSelectVersion('LuaLand Cracker V2')">LuaLand Cracker V2</button>
       </div>`;
   } else {
-    // Normal message
     const parsed = msg.is_deleted ? '<em>(This message was deleted)</em>' : parseMarkdown(rawText);
     bubbleContent = `<div class="forum-bubble-text${isLong?' collapsed':''}" id="${msgId}">${parsed}</div>`;
     if(isLong) bubbleContent += `<span class="forum-read-more" onclick="forumToggleExpand('${msgId}',this)">Read more</span>`;
   }
 
   const edited = msg.is_edited && !msg.is_deleted;
-  const isCommand = ['command','version_request','request'].includes(msg.message_type);
+  const privateLabel = isPrivate ? `<span class="forum-private-label">Only you (and dev) can see this</span>` : '';
 
-  // Edit/delete actions — only for normal messages by owner, NOT commands
-  let actions = '';
+  let actionsHtml = '';
   if(isOwn && !msg.is_deleted && !isCommand) {
-    actions = `<div class="forum-msg-actions">
-      <button class="forum-action-btn" onclick="forumStartEdit('${msg.id}')" title="Edit">
+    actionsHtml = `<div class="forum-msg-actions" id="forum-actions-${msg.id}">
+      <button class="forum-action-btn" onclick="forumStartEdit('${msg.id}')">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        Edit
       </button>
-      <button class="forum-action-btn" onclick="forumDeleteMsg('${msg.id}')" title="Delete">
+      <button class="forum-action-btn del" onclick="forumDeleteMsg('${msg.id}')">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Delete
       </button>
-      <span class="forum-time">${time}</span>
     </div>`;
-  } else {
-    actions = `<span class="forum-time" style="padding:2px 4px;">${time}</span>`;
   }
-
-  const privateLabel = isPrivate ? `<span class="forum-private-label">Only you${APP.isAdmin?'':' (and dev)'} can see this</span>` : '';
 
   div.innerHTML = `
     <img class="forum-avatar" src="${avatar}" onclick="viewUserProfile('${username}')">
@@ -3199,11 +3347,79 @@ function buildForumMessage(msg) {
         ${edited ? '<div class="forum-edited">Edited</div>' : ''}
         <div id="forum-edit-area-${msg.id}"></div>
       </div>
-      ${actions}
+      ${actionsHtml}
+      <span class="forum-time" style="padding:2px 4px;">${time}</span>
     </div>`;
+
+  // Hold/longpress to show edit+delete (400ms)
+  if(isOwn && !msg.is_deleted && !isCommand) {
+    let pressTimer = null;
+    const bubble = div.querySelector('.forum-bubble');
+    const showActions = () => {
+      const actEl = document.getElementById('forum-actions-'+msg.id);
+      if(!actEl) return;
+      actEl.classList.add('visible');
+      clearTimeout(actEl._hideTimer);
+      actEl._hideTimer = setTimeout(()=>actEl.classList.remove('visible'), 4000);
+    };
+    if(bubble) {
+      bubble.addEventListener('touchstart',()=>{pressTimer=setTimeout(showActions,400);},{passive:true});
+      bubble.addEventListener('touchend',()=>clearTimeout(pressTimer));
+      bubble.addEventListener('touchmove',()=>clearTimeout(pressTimer));
+      bubble.addEventListener('contextmenu',e=>{e.preventDefault();showActions();});
+    }
+  }
   return div;
 }
 
+function forumOpenFullscreen(src) {
+  const fs = document.getElementById('forum-img-fullscreen');
+  const img = document.getElementById('forum-img-fs-src');
+  if(!fs||!img) return;
+  img.src = src;
+  fs.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function forumCloseFullscreen() {
+  const fs = document.getElementById('forum-img-fullscreen');
+  if(fs) fs.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function forumOpenFileViewer(encFname, encData) {
+  const fv = document.getElementById('forum-file-viewer');
+  const nameEl = document.getElementById('forum-fv-name');
+  const sizeEl = document.getElementById('forum-fv-size');
+  const contentEl = document.getElementById('forum-fv-content');
+  if(!fv) return;
+  const fname = decodeURIComponent(encFname);
+  const fdata = decodeURIComponent(encData);
+  nameEl.textContent = fname;
+  // Try to decode base64 to text
+  let content = '';
+  let byteSize = 0;
+  try {
+    if(fdata.startsWith('data:')) {
+      const b64 = fdata.split(',')[1] || '';
+      byteSize = Math.round(b64.length * 0.75);
+      const binary = atob(b64);
+      content = binary.replace(/[^\x09\x0a\x0d\x20-\x7e]/g,'·');
+    } else if(fdata) {
+      content = fdata;
+      byteSize = new TextEncoder().encode(fdata).length;
+    } else {
+      content = '(No content available)';
+    }
+  } catch(e) { content = '(Could not decode file content)'; }
+  sizeEl.textContent = byteSize > 1024 ? (byteSize/1024).toFixed(1)+' KB' : byteSize+' B';
+  contentEl.textContent = content;
+  fv.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function forumCloseFileViewer() {
+  const fv = document.getElementById('forum-file-viewer');
+  if(fv) fv.style.display = 'none';
+  document.body.style.overflow = '';
+}
 function forumToggleExpand(id, btn) {
   const el = document.getElementById(id);
   if(!el) return;
@@ -3213,10 +3429,10 @@ function forumToggleExpand(id, btn) {
 
 async function forumSend() {
   const inp = document.getElementById('forum-text-input');
-  const text = inp?.value?.trim();
-  if(!text || !APP.currentUser) return;
-  if(text.length > 500) return showToast('Message too long (max 500 chars).');
+  const text = (inp?.value || '').trim();
+  if(!APP.currentUser) return;
 
+  // Check for commands first
   if(text.startsWith('!')) {
     await handleForumCommand(text);
     inp.value = '';
@@ -3224,6 +3440,49 @@ async function forumSend() {
     return;
   }
 
+  // If file pending — send file message (with optional text)
+  if(_forumPendingFile) {
+    const file = _forumPendingFile;
+    const fileData = _forumPendingFileData;
+    const isImage = _forumPendingFileIsImage;
+    forumRemovePendingFile();
+
+    if(isImage) {
+      // Send image embed
+      await sbPost('forum_messages', {
+        username: APP.currentUser,
+        user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+        text: fileData,
+        is_private: false, is_edited: false, is_deleted: false,
+        message_type: 'image', file_name: file.name
+      });
+    } else {
+      await sbPost('forum_messages', {
+        username: APP.currentUser,
+        user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+        text: `📎 ${file.name}`,
+        is_private: false, is_edited: false, is_deleted: false,
+        message_type: 'file', file_name: file.name, file_data: fileData
+      });
+    }
+    // Also send text message if typed
+    if(text) {
+      await sbPost('forum_messages', {
+        username: APP.currentUser,
+        user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
+        text, is_private: false, is_edited: false, is_deleted: false,
+        message_type: 'normal'
+      });
+    }
+    inp.value = '';
+    inp.style.height = '44px';
+    loadForumMessages();
+    return;
+  }
+
+  // Normal text message
+  if(!text) return;
+  if(text.length > 500) return showToast('Message too long (max 500 chars).');
   inp.value = '';
   inp.style.height = '44px';
 
@@ -3331,7 +3590,14 @@ function forumKeyDown(e) {
 
 function autoResizeForumInput(el) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  el.style.overflowY = 'hidden';
+  const lineH = 21; // 14px font * 1.5 line-height
+  const padding = 20; // top + bottom padding
+  const maxLines = 9;
+  const maxH = lineH * maxLines + padding;
+  const newH = Math.min(el.scrollHeight, maxH);
+  el.style.height = newH + 'px';
+  el.style.overflowY = el.scrollHeight > maxH ? 'auto' : 'hidden';
 }
 
 function toggleForumPlusMenu(e) {
@@ -3349,72 +3615,67 @@ function forumAttachFile() {
   document.getElementById('forum-file-input').click();
 }
 
-// File attach handler — set up after DOM ready
+// Forum pending file (shown as chip, sent with message)
+let _forumPendingFile = null;
+let _forumPendingFileData = null;
+let _forumPendingFileIsImage = false;
+
+// File attach handler
 setTimeout(() => {
   const fi = document.getElementById('forum-file-input');
   if(!fi) return;
-  fi.addEventListener('change', async (e) => {
+  fi.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if(!file || !APP.currentUser) return;
     e.target.value = '';
 
-    const isImage = file.type.startsWith('image/');
     const hasPendingCmd = window._forumPendingCmd;
+    const isImage = file.type.startsWith('image/');
 
-    if(hasPendingCmd) {
-      // Send as a public request with command info
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if(hasPendingCmd) {
+        // Command file — send immediately as public request
         const cmdName = window._forumPendingCmd;
         window._forumPendingCmd = null;
         const msgText = `**Request From:** ${APP.currentUser}\n**Command Used:** ${cmdName}\n**File:** ${file.name}`;
-        await sbPost('forum_messages', {
+        sbPost('forum_messages', {
           username: APP.currentUser,
           user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
           text: msgText,
-          is_private: false,
-          is_edited: false, is_deleted: false,
+          is_private: false, is_edited: false, is_deleted: false,
           message_type: 'request',
           file_name: file.name,
           file_data: isImage ? ev.target.result : null
-        });
-        loadForumMessages();
-      };
-      reader.readAsDataURL(file);
-    } else if(isImage) {
-      // Embed image directly
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        await sbPost('forum_messages', {
-          username: APP.currentUser,
-          user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
-          text: ev.target.result,
-          is_private: false, is_edited: false, is_deleted: false,
-          message_type: 'image',
-          file_name: file.name
-        });
-        loadForumMessages();
-      };
-      reader.readAsDataURL(file);
-    } else {
-      // Non-image file — show file card
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        await sbPost('forum_messages', {
-          username: APP.currentUser,
-          user_avatar: APP.profile?.avatar_url || DEFAULT_AVATAR,
-          text: `📎 ${file.name}`,
-          is_private: false, is_edited: false, is_deleted: false,
-          message_type: 'file',
-          file_name: file.name,
-          file_data: ev.target.result
-        });
-        loadForumMessages();
-      };
-      reader.readAsDataURL(file);
-    }
+        }).then(() => loadForumMessages());
+      } else {
+        // Show as chip — user can also type a message then send together
+        _forumPendingFile = file;
+        _forumPendingFileData = ev.target.result;
+        _forumPendingFileIsImage = isImage;
+        // Show chip in forum-file-chip-row
+        const chipRow = document.getElementById('forum-file-chip-row');
+        if(chipRow) {
+          chipRow.style.display = 'flex';
+          chipRow.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(176,38,255,0.1);border:1px solid rgba(176,38,255,0.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#b026ff;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2">${isImage ? '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>' : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'}</svg>
+            ${file.name}
+            <button onclick="forumRemovePendingFile()" style="background:none;border:none;cursor:pointer;color:rgba(176,38,255,0.5);font-size:14px;padding:0;line-height:1;">×</button>
+          </div>`;
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   });
 }, 500);
+
+function forumRemovePendingFile() {
+  _forumPendingFile = null;
+  _forumPendingFileData = null;
+  _forumPendingFileIsImage = false;
+  const chipRow = document.getElementById('forum-file-chip-row');
+  if(chipRow) { chipRow.innerHTML = ''; chipRow.style.display = 'none'; }
+}
 
 async function forumOpenCamera() {
   document.getElementById('forum-plus-menu').classList.remove('open');
@@ -3471,6 +3732,492 @@ async function forumConfirmCamera() {
 function forumShowCommands() {
   document.getElementById('forum-plus-menu').classList.remove('open');
   handleForumCommand('!help');
+}
+
+
+// ══ DUMPER TAB ══
+// Implements techniques from:
+// - MoonSec-V3-Dumper (modules/decoder.py, extractor.py, vm_parser.py)
+// - WeAreDevs deobfuscator.py (mock env trace + constant extraction)
+let dumperNumLines = false;
+let dumperAttachedFile = null;
+
+function dumperInit(){dumperSyncLines('in');dumperSyncLines('out');}
+function dumperGetInput(){return(dumperNumLines?document.getElementById('dumper-input'):document.getElementById('dumper-input-plain'))?.value||'';}
+function dumperSetInput(val){const p=document.getElementById('dumper-input-plain');const l=document.getElementById('dumper-input');if(p)p.value=val;if(l)l.value=val;dumperSyncLines('in');}
+function dumperSyncLines(side){
+  const ta=document.getElementById(side==='in'?'dumper-input':'dumper-output');
+  const nums=document.getElementById(side==='in'?'dumper-line-nums-in':'dumper-line-nums-out');
+  if(!ta||!nums)return;if(side==='out'&&!dumperNumLines)return;
+  nums.textContent=Array.from({length:Math.max(1,ta.value.split('\n').length)},(_,i)=>i+1).join('\n');
+}
+function dumperSyncScroll(){const ta=document.getElementById('dumper-input');const n=document.getElementById('dumper-line-nums-in');if(ta&&n)n.scrollTop=ta.scrollTop;}
+function dumperToggleLines(){
+  dumperNumLines=document.getElementById('dumper-numlines-toggle').checked;
+  const wrap=document.getElementById('dumper-editor-wrap');const plain=document.getElementById('dumper-input-plain');
+  const outN=document.getElementById('dumper-line-nums-out');const val=dumperGetInput();
+  if(dumperNumLines){wrap.style.display='flex';plain.style.display='none';document.getElementById('dumper-input').value=val;if(outN)outN.style.display='block';}
+  else{wrap.style.display='none';plain.style.display='block';plain.value=val;if(outN)outN.style.display='none';}
+  dumperSyncLines('in');dumperSyncLines('out');
+}
+function dumperSetStatus(msg,ok){
+  const el=document.getElementById('dumper-status');if(!el)return;
+  el.textContent=msg;el.style.color=ok===true?'#22c55e':ok===false?'#ef4444':'rgba(176,38,255,0.6)';
+}
+function dumperClear(){
+  dumperSetInput('');const out=document.getElementById('dumper-output');if(out)out.value='';
+  dumperSetStatus('Cleared.',null);dumperAttachedFile=null;
+  const chip=document.getElementById('dumper-file-chip-area');if(chip)chip.innerHTML='';
+  dumperSyncLines('in');dumperSyncLines('out');
+}
+function dumperCopyOutput(){
+  const out=document.getElementById('dumper-output');
+  if(!out||!out.value.trim())return dumperSetStatus('Nothing to copy.',false);
+  navigator.clipboard.writeText(out.value).then(()=>dumperSetStatus('Copied!',true));
+}
+function dumperAttach(){document.getElementById('dumper-file-input').click();}
+function dumperCheckSyntax(){
+  const code=dumperGetInput().trim();if(!code)return dumperSetStatus('No code.',false);
+  let issues=[],d=0,e=0;
+  code.split('\n').forEach(l=>{const s=l.replace(/--.*$/,'').replace(/"[^"]*"|'[^']*'/g,'');d+=(s.match(/\bdo\b|\bfunction\b|\bthen\b/g)||[]).length;e+=(s.match(/\bend\b/g)||[]).length;});
+  if(Math.abs(d-e)>3)issues.push('Unbalanced do/end');
+  dumperSetStatus(issues.length===0?'Syntax OK (can still dump)':'Issues (can still dump): '+issues.join('; '),issues.length===0?true:null);
+}
+
+// ════════════════════════════════════════
+// DETECTION
+// ════════════════════════════════════════
+function dumperDetect(code){
+  if(/luraph/i.test(code))return null;
+  if(/secrovia/i.test(code))return null;
+  if(/wearedevs\.net\/obfuscator/i.test(code))return'WeAreDevs';
+  if(/local\s+[A-Za-z_]\w*\s*=\s*\{(?:\s*"(?:\\[0-9]{3}){2,}[^"]*"\s*[;,]?\s*){3,}\}/.test(code)&&/for\s+\w+\s*,\s*\w+\s+in\s+ipairs/.test(code))return'WeAreDevs';
+  if(/MoonSec|moonsec/i.test(code))return'MoonSec';
+  if(/prometheus|__PROMETHEUS/i.test(code))return'Prometheus';
+  if(/Ferib|ferib/i.test(code))return'LuaObfuscator';
+  if(/PHASE_BOUNDARY/i.test(code))return'Prometheus/Moonsec';
+  if(/77fuscator/i.test(code))return'77fuscator';
+  if(/AztupBrew|aztup/i.test(code))return'Aztup';
+  if(/FireFly|firefly_/i.test(code))return'FireFly';
+  if(/local\s+[A-Za-z_]\w*\s*=\s*\{(?:[^{}]|\{[^{}]*\}){200,}\}/.test(code))return'Generic';
+  if(/loadstring\s*\([^)]{10,}\)/.test(code))return'Generic';
+  return'Generic';
+}
+
+// ════════════════════════════════════════
+// MOONSEC V3 — from decoder.py + extractor.py + vm_parser.py
+// ════════════════════════════════════════
+
+// extractor.py: extract_encoded_bytecode — find the long encoded string
+function moonsec_extractEncodedBytecode(luaSource){
+  const parts=luaSource.split('"');
+  let stringList=[];let current='';let quoteParity=0;
+  for(const seg of parts){
+    if(quoteParity%2===1) current+=seg;
+    quoteParity++;
+    if(!current.endsWith('\\')){stringList.push(current);current='';}
+    else{current=current.slice(0,-1)+'"';quoteParity--;}
+  }
+  // Find the long encoded string (>300 chars, preceded by decoder call)
+  let decoderVar='';
+  for(const s of stringList){
+    if(!s)continue;
+    const beforeStr=luaSource.split('"'+s+'"')[0];
+    const lastParen=beforeStr.split('(').pop().split(',')[0];
+    if(/^\d+$/.test(lastParen)){
+      decoderVar=beforeStr.slice(-6).replace(/[^a-zA-Z]/g,'').slice(-1);
+    }
+    if(decoderVar&&s.length>300&&luaSource.slice(Math.max(0,luaSource.indexOf('"'+s+'"')-6)).includes(decoderVar+'(')){
+      return s;
+    }
+  }
+  // Fallback: find longest string
+  let longest='';
+  for(const s of stringList){if(s.length>longest.length&&s.length>50)longest=s;}
+  return longest||null;
+}
+
+// decoder.py: decode_bytecode — custom hex+rolling key decode
+function moonsec_decodeBytecode(encodedStr, key){
+  const charToIndex={};
+  let pos=-1,strIndex=1;
+  while(true){
+    pos++;
+    charToIndex[encodedStr[strIndex-1]]=pos;
+    strIndex++;
+    if(pos===15){break;}
+  }
+  const result=[];
+  let pairIndex=0;
+  const currentPair={};
+  let rollingKey=key;
+  while(strIndex<=encodedStr.length){
+    currentPair[pairIndex]=encodedStr[strIndex-1];
+    strIndex++;pairIndex++;
+    if(pairIndex%2===0){
+      pairIndex=0;
+      const high=charToIndex[currentPair[0]]||0;
+      const low=charToIndex[currentPair[1]]||0;
+      result.push(((high*0x10)+low+rollingKey)%0x100);
+      rollingKey=key+rollingKey;
+    }
+  }
+  return result;
+}
+
+// decoder.py: find_key_and_decode — brute force key 0..9999 (browser limit)
+function moonsec_findKey(encoded, onProgress){
+  return new Promise(resolve=>{
+    let key=0;
+    const MAX=10000; // limit for browser
+    function tryNext(){
+      if(key>MAX){resolve({key:null,bytes:null});return;}
+      if(key%500===0&&onProgress)onProgress(key,MAX);
+      try{
+        const bytes=moonsec_decodeBytecode(encoded,key);
+        // vm_parser.py: check if b"MoonSec" in decoded
+        const str=bytes.map(b=>String.fromCharCode(b)).join('');
+        if(str.includes('MoonSec')||str.includes('moonsec')){
+          resolve({key,bytes});return;
+        }
+      }catch(e){}
+      key++;
+      setTimeout(tryNext,0);
+    }
+    tryNext();
+  });
+}
+
+// vm_parser.py: parse_vm — extract strings from bytecode
+const ROBLOX_GLOBALS=new Set(['game','workspace','script','wait','spawn','delay','print','warn','error','pcall','xpcall','pairs','ipairs','tostring','tonumber','type','math','string','table','Instance','Vector3','CFrame','Color3','UDim2','UDim','Enum','task','Players','RunService','UserInputService','ReplicatedStorage','TweenService','HttpService','loadstring']);
+const LUA_KEYWORDS=new Set(['function','local','return','if','then','else','elseif','end','while','do','for','in','repeat','until','break','true','false','nil','and','or','not']);
+
+function moonsec_parseVM(bytes){
+  const apiCalls=[];const constants=[];const seen=new Set();
+  let i=0;
+  while(i<bytes.length){
+    if(bytes[i]>=0x20&&bytes[i]<=0x7e){
+      let j=i;
+      while(j<bytes.length&&bytes[j]>=0x20&&bytes[j]<=0x7e)j++;
+      if(j-i>=3){
+        const s=bytes.slice(i,j).map(b=>String.fromCharCode(b)).join('');
+        if(!seen.has(s)){
+          seen.add(s);
+          if(!LUA_KEYWORDS.has(s)){
+            if(ROBLOX_GLOBALS.has(s))apiCalls.push(s);
+            else if(/[a-zA-Z]/.test(s))constants.push(s);
+          }
+        }
+      }
+      i=j;
+    }else{i++;}
+  }
+  return{apiCalls,constants};
+}
+
+// output.py: format_output
+function moonsec_formatOutput(apiCalls,constants,key){
+  let out='--[[ MoonSec V3 Dump ]]\n';
+  out+=`--[[ Key: ${key} ]]\n\n`;
+  if(apiCalls.length>0){
+    out+='--[[ Roblox API Calls Detected ]]\n';
+    [...new Set(apiCalls)].sort().forEach(c=>{out+=`-- ${c}\n`;});
+    out+='\n';
+  }
+  if(constants.length>0){
+    out+='--[[ String Constants ]]\n';
+    constants.forEach(c=>{out+=`-- "${c.replace(/"/g,'\\"')}"\n`;});
+    out+='\n';
+  }
+  out+='--[[ Raw Constant Table ]]\nlocal _constants = {\n';
+  constants.forEach(c=>{out+=`    "${c.replace(/"/g,'\\"')}",\n`;});
+  out+='}\n\n--[[ Roblox API Table ]]\nlocal _api = {\n';
+  [...new Set(apiCalls)].sort().forEach(c=>{out+=`    "${c}",\n`;});
+  out+='}';
+  return out;
+}
+
+// ════════════════════════════════════════
+// WEAREDEVS — from deobfuscator.py
+// ════════════════════════════════════════
+
+// deobfuscator.py: find string table var: local VAR={"
+function wrd_findTableVar(code){
+  const m=code.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
+  return m?m[1]:null;
+}
+
+// deobfuscator.py: step_foldNumbers — evaluate arithmetic
+function wrd_foldNumbers(code){
+  let prev;let iters=0;
+  do{
+    prev=code;iters++;
+    code=code.replace(/(-?\d{4,})\s*([\+\-\*\/\%])\s*\((-?\d{4,})\)/g,(m,a,op,b)=>{
+      try{const r={'+':+a+(+b),'-':+a-(+b),'*':+a*(+b),'%':(+a%(+b)+Math.abs(+b))%Math.abs(+b),'/':+a/(+b)}[op];return Number.isFinite(r)?String(Math.round(r*1e9)/1e9):m;}catch(e){return m;}
+    });
+    code=code.replace(/(-?\d{4,})\s*\+\s*(-?\d{4,})\b/g,(m,a,b)=>{const r=+a+(+b);return(r>=0&&r<10000)?String(r):m;});
+    code=code.replace(/(-?\d{4,})\s*-\s*(-?\d{4,})\b/g,(m,a,b)=>{const r=+a-(+b);return(r>=0&&r<10000)?String(r):m;});
+  }while(code!==prev&&iters<20);
+  return code;
+}
+
+// deobfuscator.py: _fix_lua51_escapes equivalent — decode \NNN in strings
+function wrd_decodeEscapes(code){
+  return code.replace(/"((?:[^"\\]|\\.)*)"/g,(match,inner)=>{
+    const d=inner.replace(/\\([0-9]{1,3})/g,(_,n)=>{const c=parseInt(n);return c>=32&&c<=126?String.fromCharCode(c):_+n;});
+    if(/[^\x20-\x7e\n\r\t]/.test(d))return match;
+    return'"'+d.replace(/"/g,'\\"')+'"';
+  });
+}
+
+// deobfuscator.py: extract and inline constant table
+function wrd_inlineConstants(code){
+  // Find: local VAR={"\NNN",...} — the big string table
+  const wrdPat=/local\s+([A-Za-z_]\w*)\s*=\s*\{([\s\S]*?)\}(?=\s*for\s+\w+\s*,\s*\w+\s+in\s+ipairs)/;
+  const genPat=/local\s+([A-Za-z_]\w*)\s*=\s*\{((?:\s*"(?:[^"\\]|\\.)*"\s*[;,]?\s*){8,})\}/g;
+
+  let tableName=null,entries=[],tableMatch=null;
+  let m=code.match(wrdPat);
+  if(m){tableName=m[1];tableMatch=m[0];_extractAllStrings(m[2],entries);}
+  else{
+    let gm,best=null,bestScore=0;
+    while((gm=genPat.exec(code))!==null){
+      const score=(gm[2].match(/\\[0-9]{2,3}/g)||[]).length;
+      if(score>bestScore){bestScore=score;best=gm;}
+    }
+    if(best){tableName=best[1];tableMatch=best[0];_extractAllStrings(best[2],entries);}
+  }
+  if(!tableName||entries.length===0)return{code,tableName:null,entries:[]};
+
+  // Decode \NNN in each entry then try base64
+  const decoded=entries.map(r=>{
+    const b=r.replace(/\\([0-9]{1,3})/g,(_,n)=>String.fromCharCode(parseInt(n)));
+    try{const d=atob(b.replace(/[^A-Za-z0-9+/=]/g,''));if(d&&/[a-zA-Z_]/.test(d)&&!/[\x00-\x08\x0e-\x1f\x7f]/.test(d))return d;}catch(e){}
+    return b;
+  });
+
+  // Simulate shuffle (WeAreDevs ipairs swap pattern)
+  const shufflePat=/for\s+\w+\s*,\s*\w+\s+in\s+ipairs\s*\(\{([\s\S]{0,3000}?)\}\s*\)\s*do/;
+  const sm=code.match(shufflePat);
+  if(sm){
+    const pairReg=/\{([^}]+)\}/g;let pm;
+    while((pm=pairReg.exec(sm[1]))!==null){
+      const nums=pm[1].split(/[;,]/).map(e=>{try{return Function('"use strict";return('+e+')')();}catch(e){return null;}}).filter(n=>n!==null&&Number.isFinite(n)&&Number.isInteger(n));
+      if(nums.length===2){const[ia,ib]=[nums[0]-1,nums[1]-1];if(ia>=0&&ib>=0&&ia<decoded.length&&ib<decoded.length)[decoded[ia],decoded[ib]]=[decoded[ib],decoded[ia]];}
+    }
+  }
+
+  // Find index offset from accessor fn
+  let offset=0;
+  const accM=code.match(/local\s+function\s+([A-Za-z_]\w*)\s*\(([A-Za-z_]\w*)\)\s*return\s+[A-Za-z_]\w*\s*\[\s*[A-Za-z_]\w*\s*-\s*([\d]+)\s*\]/);
+  const accName=accM?accM[1]:null;
+  if(accM)offset=parseInt(accM[3]);
+
+  const esc=tableName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  let result=code;
+
+  // Inline accessor fn calls: fn(EXPR) → "value"
+  if(accName){
+    const ae=accName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    result=result.replace(new RegExp('\\b'+ae+'\\s*\\(([^)]{1,100})\\)','g'),(match,expr)=>{
+      try{const idx=Function('"use strict";return('+expr+')')()-offset-1;if(idx>=0&&idx<decoded.length&&decoded[idx])return'"'+decoded[idx].replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}catch(e){}return match;
+    });
+    result=result.replace(new RegExp('local\\s+function\\s+'+ae+'\\s*\\([^)]*\\)[^e]*end\\s*'),'');
+  }
+
+  // Inline TABLE[EXPR] → "value"
+  result=result.replace(new RegExp(esc+'\\s*\\[([^\\]]{1,120})\\]','g'),(match,expr)=>{
+    try{const idx=Function('"use strict";return('+expr+')')()-1;if(idx>=0&&idx<decoded.length&&decoded[idx])return'"'+decoded[idx].replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}catch(e){}return match;
+  });
+
+  // Remove table + shuffle boilerplate
+  result=result.replace(new RegExp('local\\s+'+esc+'\\s*=\\s*\\{[\\s\\S]+?\\}\\s*(?=for\\s+\\w+\\s*,\\s*\\w+\\s+in\\s+ipairs)'),'-- [String table removed]\n');
+  result=result.replace(/for\s+\w+\s*,\s*\w+\s+in\s+ipairs\s*\(\{[\s\S]{0,3000}?\}\s*\)\s*do[\s\S]{0,2000}?end\s*end/g,'-- [Shuffle removed]\n');
+
+  return{code:result,tableName,entries:decoded};
+}
+
+// deobfuscator.py vm_parser.py ROBLOX_GLOBALS check — parse_vm equivalent for JS
+function wrd_parseConstants(code,decoded){
+  const apiCalls=[];const constants=[];const seen=new Set();
+  // From decoded entries (the actual constant table contents)
+  decoded.forEach(v=>{
+    if(!v||seen.has(v))return;seen.add(v);
+    if(LUA_KEYWORDS.has(v))return;
+    if(ROBLOX_GLOBALS.has(v))apiCalls.push(v);
+    else if(v.length>=2&&v.length<=80&&/[a-zA-Z]/.test(v)&&!/[\x00-\x1f\x7f]/.test(v))constants.push(v);
+  });
+  // Also extract from remaining code strings
+  const sr=/"((?:[^"\\]|\\.)*)"/g;let m;
+  while((m=sr.exec(code))!==null){
+    const v=m[1].trim();
+    if(!v||seen.has(v)||v.length<2||v.length>80)continue;
+    if(LUA_KEYWORDS.has(v)||/[\x00-\x1f\x7f]/.test(v))continue;
+    seen.add(v);
+    if(ROBLOX_GLOBALS.has(v))apiCalls.push(v);
+    else if(/[a-zA-Z]/.test(v))constants.push(v);
+  }
+  return{apiCalls,constants};
+}
+
+// deobfuscator.py: postprocess — fold concats, strip junk
+function wrd_postprocess(code){
+  // Fold string concatenations
+  let prev;
+  do{prev=code;code=code.replace(/"((?:[^"\\]|\\.)*?)"\s*\.\.\s*"((?:[^"\\]|\\.)*?)"/g,(m,a,b)=>'"'+a+b+'"');}while(code!==prev);
+  // Decode string.char()
+  code=code.replace(/string\.char\s*\(([\d,\s]+)\)/g,(match,nums)=>{
+    try{const chars=nums.split(',').map(n=>String.fromCharCode(parseInt(n.trim())));if(chars.some(c=>c.charCodeAt(0)<32&&c!=='\n'))return match;return'"'+chars.join('').replace(/"/g,'\\"')+'"';}catch(e){return match;}
+  });
+  // Remove block comments and dead code
+  code=code.replace(/--\[\[[\s\S]*?\]\]/g,'');
+  code=code.replace(/--\s*PHASE_BOUNDARY:[^\n]*/g,'');
+  code=code.replace(/if\s+false\s+then[\s\S]{0,500}?end\s*\n/g,'');
+  // Strip pure junk lines (long number sequences with no keywords)
+  const lines=code.split('\n');
+  const clean=lines.filter(line=>{
+    const t=line.trim();if(!t)return true;
+    if(/\b(local|function|if|then|else|end|do|while|for|return|true|false|nil|and|or|not|in|repeat|until|break)\b/.test(t))return true;
+    if(/\b(game|workspace|Players|script|require|print|warn|pcall|GetService|WaitForChild|FindFirstChild|Connect|Fire|Instance|task)\b/i.test(t))return true;
+    if(/=\s*"[^"]*"/.test(t))return true;
+    if(/^[a-zA-Z_]\w*[\s.(]/.test(t))return true;
+    if(/^[\d\s\+\-\*\/\%\^\(\)\[\]\{\}\,\.\:=<>~#;]+$/.test(t)&&t.length>30)return false;
+    return true;
+  });
+  return clean.join('\n').replace(/\n{4,}/g,'\n\n').trim();
+}
+
+function _extractAllStrings(body,arr){
+  const sr=/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g;let m;
+  while((m=sr.exec(body))!==null)arr.push(m[1]!==undefined?m[1]:m[2]);
+}
+
+// ════════════════════════════════════════
+// MAIN DUMP
+// ════════════════════════════════════════
+async function dumperDump(){
+  const code=dumperGetInput().trim();
+  const out=document.getElementById('dumper-output');
+  if(!code){dumperSetStatus('No code provided.',false);return;}
+
+  const detected=dumperDetect(code);
+  if(detected===null){out.value='';dumperSyncLines('out');return dumperSetStatus('Unsupported (Luraph/Secrovia).',false);}
+  dumperSetStatus('Detected: '+detected+' — processing...',null);
+  out.value='-- Processing...\n';
+
+  // Use MoonSec path for MoonSec scripts
+  if(detected==='MoonSec'){
+    dumperSetStatus('MoonSec V3 — extracting encoded bytecode...',null);
+    const encoded=moonsec_extractEncodedBytecode(code);
+    if(!encoded){
+      out.value='-- [MoonSec] Could not find encoded bytecode string.\n-- Try using the WeAreDevs path instead.';
+      dumperSetStatus('Could not extract MoonSec bytecode.',false);
+      dumperSyncLines('out');return;
+    }
+    out.value='-- [MoonSec] Encoded string found ('+encoded.length+' chars)\n-- [MoonSec] Brute-forcing key (0-10000)...\n';
+    dumperSyncLines('out');
+    const {key,bytes}=await moonsec_findKey(encoded,(k,max)=>{
+      dumperSetStatus('MoonSec — trying key '+k+'/'+max+'...',null);
+    });
+    if(!key&&key!==0){
+      out.value+='-- [MoonSec] Key not found in range 0-10000.\n-- [MoonSec] Key may be >10000 (browser limitation).\n-- [MoonSec] Falling back to static analysis...\n\n';
+      // Fall through to static analysis below
+    } else {
+      const{apiCalls,constants}=moonsec_parseVM(bytes);
+      out.value=moonsec_formatOutput(apiCalls,constants,key);
+      dumperSetStatus('MoonSec done! Key='+key+', '+constants.length+' constants, '+apiCalls.length+' API calls.',true);
+      dumperSyncLines('out');return;
+    }
+  }
+
+  // WeAreDevs + Generic static analysis path (from deobfuscator.py logic)
+  setTimeout(()=>{
+    try{
+      let w=code,log='';
+      log+='-- ══════════════════════════════════════\n';
+      log+='-- LuaLand.RSL Constant Dumper\n';
+      log+='-- Obfuscator: '+detected+'\n';
+      log+='-- Technique: WeAreDevs deobfuscator.py + MoonSec vm_parser.py\n';
+      log+='-- ══════════════════════════════════════\n\n';
+
+      // Step 1: Fold arithmetic (deobfuscator.py fold numbers)
+      w=wrd_foldNumbers(w);
+      log+='-- [1] Arithmetic folded\n';
+
+      // Step 2: Decode \NNN escapes
+      w=wrd_decodeEscapes(w);
+      log+='-- [2] Byte escapes decoded\n';
+
+      // Step 3: Inline constant table (WeAreDevs extractor.py approach)
+      const{code:w2,tableName,entries}=wrd_inlineConstants(w);
+      w=w2;
+      log+='-- [3] Constant table inlined: '+(tableName?'"'+tableName+'" ('+entries.length+' entries)':'not found')+'\n';
+
+      // Step 4: Postprocess (fold concats, strip junk)
+      w=wrd_postprocess(w);
+      log+='-- [4] Postprocessed\n\n';
+
+      // Step 5: Parse constants (vm_parser.py approach)
+      const{apiCalls,constants}=wrd_parseConstants(w,entries);
+
+      // Output constants section
+      log+='-- ══ API CALLS DETECTED ('+apiCalls.length+') ══\n';
+      if(apiCalls.length>0){
+        log+='local _api = {\n';
+        [...new Set(apiCalls)].sort().forEach(c=>{log+='    "'+c+'",\n';});
+        log+='}\n\n';
+      }
+      log+='-- ══ STRING CONSTANTS ('+constants.length+') ══\n';
+      log+='local Constants = {\n';
+      constants.forEach((c,i)=>{log+='    _const'+(i+1)+' = "'+c.replace(/"/g,'\\"')+'",\n';});
+      log+='}\n\n';
+
+      // Step 6: Strip constants from reconstructed code
+      let stripped=w;
+      constants.forEach((val,i)=>{
+        const esc=val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        stripped=stripped.replace(new RegExp('"'+esc+'"|\''+esc+'\'','g'),'_const'+(i+1));
+      });
+      apiCalls.forEach(val=>{
+        // Don't replace known globals in code body — just annotate
+      });
+
+      log+='-- ══ RECONSTRUCTED SCRIPT ══\n\n';
+      log+=stripped;
+
+      out.value=log;
+      dumperSetStatus('Done! '+constants.length+' constants, '+apiCalls.length+' API calls. Obfuscator: '+detected,true);
+    }catch(e){
+      out.value='-- Error: '+e.message+'\n'+e.stack;
+      dumperSetStatus('Error: '+e.message,false);
+    }
+    dumperSyncLines('out');
+  },100);
+}
+
+// File input
+setTimeout(()=>{
+  const fi=document.getElementById('dumper-file-input');if(!fi)return;
+  fi.addEventListener('change',(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    if(file.type.startsWith('image/')){dumperSetStatus('Images not allowed.',false);e.target.value='';return;}
+    e.target.value='';dumperAttachedFile=file;
+    const chip=document.getElementById('dumper-file-chip-area');
+    if(chip)chip.innerHTML=`<span class="dumper-file-chip"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b026ff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${file.name}<button onclick="dumperRemoveFile()">×</button></span>`;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{dumperSetInput(ev.target.result);dumperSetStatus('Loaded: '+file.name,true);};
+    reader.onerror=()=>dumperSetStatus('Failed to read.',false);
+    reader.readAsText(file);
+  });
+},700);
+function dumperRemoveFile(){
+  dumperAttachedFile=null;const chip=document.getElementById('dumper-file-chip-area');
+  if(chip)chip.innerHTML='';dumperSetInput('');dumperSetStatus('File removed.',null);
+}
+
+// ══ FORUM KEY FIX — Enter = newline always ══
+function forumKeyDown(e) {
+  // Enter creates newline (like messenger). Send only via send button.
 }
 
 
