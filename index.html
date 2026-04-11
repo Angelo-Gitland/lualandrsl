@@ -4137,25 +4137,20 @@ async function dumperDump(){
       log+='-- ══════════════════════════════════════\n';
       log+='-- LuaLand.RSL Constant Dumper\n';
       log+='-- Obfuscator: '+detected+'\n';
-      log+='-- Technique: WeAreDevs deobfuscator.py + MoonSec vm_parser.py\n';
       log+='-- ══════════════════════════════════════\n\n';
 
       // Step 1: Fold arithmetic (deobfuscator.py fold numbers)
       w=wrd_foldNumbers(w);
-      log+='-- [1] Arithmetic folded\n';
 
       // Step 2: Decode \NNN escapes
       w=wrd_decodeEscapes(w);
-      log+='-- [2] Byte escapes decoded\n';
 
       // Step 3: Inline constant table (WeAreDevs extractor.py approach)
       const{code:w2,tableName,entries}=wrd_inlineConstants(w);
       w=w2;
-      log+='-- [3] Constant table inlined: '+(tableName?'"'+tableName+'" ('+entries.length+' entries)':'not found')+'\n';
 
       // Step 4: Postprocess (fold concats, strip junk)
       w=wrd_postprocess(w);
-      log+='-- [4] Postprocessed\n\n';
 
       // Step 5: Parse constants (vm_parser.py approach)
       const{apiCalls,constants}=wrd_parseConstants(w,entries);
