@@ -579,6 +579,24 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
               <input type="text" id="reg-protect" maxlength="30" placeholder="Create your Protect.me password...">
               <p class="text-[9px] text-gray-500 px-1 mt-1">At least 8 characters, cannot match username or password.</p>
             </div>
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold uppercase px-1">Email <span style="color:rgba(176,38,255,0.5);font-size:9px;">(For account recovery &amp; security)</span></label>
+              <input type="email" id="reg-email" placeholder="your@email.com (recommended)">
+            </div>
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold uppercase px-1">Security Question</label>
+              <select id="reg-sec-question" style="background:#000;border:1px solid rgba(176,38,255,0.4);border-radius:12px;padding:10px 14px;color:#b026ff;font-family:inherit;font-size:13px;width:100%;">
+                <option value="">Choose a security question...</option>
+                <option value="pet">What was your first pet&#39;s name?</option>
+                <option value="city">What city were you born in?</option>
+                <option value="school">What was your elementary school name?</option>
+                <option value="mother">What is your mother&#39;s maiden name?</option>
+                <option value="game">What was your first video game?</option>
+                <option value="food">What is your favorite food?</option>
+              </select>
+              <input type="text" id="reg-sec-answer" placeholder="Your answer (keep it secret)" maxlength="60" style="margin-top:6px;">
+              <p class="text-[9px] text-gray-500 px-1 mt-1">Used to verify your identity if someone tries to access your account.</p>
+            </div>
             <button id="btn-do-register" class="w-full bg-primary-custom py-3 font-bold">Register</button>
             <button id="btn-back-login-reg" class="w-full text-xs text-gray-500 mt-2">Back to Login</button>
           </div>
@@ -1473,17 +1491,48 @@ async function doLogin() {
     return;
   }
 
-  // Save new token to DB and localStorage
-  await sbPatch('users', `username=eq.${u}`, {session_token: newToken});
-  localStorage.setItem('lualand_token_' + u, newToken);
+  // Fetch current IP for device check
+  let currentIp = '';
+  try {
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const ipData = await ipRes.json();
+    currentIp = ipData.ip || '';
+  } catch(e) { currentIp = 'unknown'; }
 
-  APP.currentUser = u;
+  const lastIp = user.last_ip || '';
+  const isNewDevice = lastIp && lastIp !== currentIp;
+
+  if(isNewDevice) {
+    hideLoading();
+    _pendingLoginUser = user;
+    _pendingLoginToken = newToken;
+    _pendingLoginIp = currentIp;
+    const hasEmail = !!(user.email || user.social_link);
+    if(hasEmail) {
+      showSecurityEmail();
+      const hint = user.email || user.social_link || '';
+      const masked = hint.replace(/(.{2})(.*)(@.*)/, (m,a,b,c)=>a+'*'.repeat(Math.max(2,b.length))+c);
+      document.getElementById('sec-email-hint').textContent = 'We will send a code to: ' + masked;
+      document.getElementById('sec-email-input').value = hint;
+    } else {
+      showSecurityPhone();
+    }
+    return;
+  }
+
+  await completeLogin(user, newToken, currentIp);
+}
+
+async function completeLogin(user, token, ip) {
+  await sbPatch('users', 'username=eq.'+user.username, {session_token: token, last_ip: ip});
+  localStorage.setItem('lualand_token_' + user.username, token);
+  APP.currentUser = user.username;
   APP.isAdmin = user.is_admin === true;
   APP.profile = user;
   saveSession();
   hideLoading();
   initSession();
-  showToast(`Welcome back, ${user.display_name||u}!`);
+  showToast('Welcome back, ' + (user.display_name||user.username) + '!');
 }
 
 function showLoginFailed() {
@@ -1522,10 +1571,16 @@ async function doRegister() {
   const protectCheck = await sbGetExact('users',{protect_me:r});
   if(protectCheck.length>0) { hideLoading(); return showToast("Protect.me already taken."); }
 
+  const regEmail = document.getElementById('reg-email')?.value.trim()||'';
+  const regSecQ = document.getElementById('reg-sec-question')?.value||'';
+  const regSecA = (document.getElementById('reg-sec-answer')?.value.trim()||'').toLowerCase();
+  const hashedSecA = regSecA ? await hashPassword(regSecA) : '';
+
   const newUser = await sbPost('users',{
     username:u, password:p, display_name:u,
     bio:'', avatar_url:'', protect_me:r,
-    social_link:'', followers:0, verified:false
+    social_link:regEmail, followers:0, verified:false,
+    email:regEmail, sec_question:regSecQ, sec_answer:hashedSecA
   });
 
   if(!newUser) { hideLoading(); return showToast("Registration failed. Try again."); }
@@ -5205,6 +5260,177 @@ window.addEventListener('resize',()=>{
 });
 
 document.addEventListener('DOMContentLoaded',initApp);
+
+let _pendingLoginUser = null;
+let _pendingLoginToken = null;
+let _pendingLoginIp = '';
+let _secEmailCode = '';
+
+const SEC_QUESTIONS = {
+  pet: "What was your first pet's name?",
+  city: "What city were you born in?",
+  school: "What was your elementary school name?",
+  mother: "What is your mother's maiden name?",
+  game: "What was your first video game?",
+  food: "What is your favorite food?"
+};
+
+function showSecurityEmail() {
+  document.getElementById('modal-security-email').style.display = 'flex';
+  document.getElementById('modal-security-phone').style.display = 'none';
+}
+
+function showSecurityPhone() {
+  document.getElementById('modal-security-phone').style.display = 'flex';
+  document.getElementById('modal-security-email').style.display = 'none';
+  const q = _pendingLoginUser?.sec_question || '';
+  const label = document.getElementById('sec-question-label');
+  if(label) label.textContent = SEC_QUESTIONS[q] || 'Answer your security question:';
+  if(!q) {
+    const label2 = document.getElementById('sec-question-label');
+    if(label2) label2.textContent = 'You have no security question set. Contact admin to recover your account.';
+    document.getElementById('sec-question-answer').style.display = 'none';
+  }
+}
+
+function secCancelLogin() {
+  document.getElementById('modal-security-email').style.display = 'none';
+  document.getElementById('modal-security-phone').style.display = 'none';
+  _pendingLoginUser = null;
+  _pendingLoginToken = null;
+  _secEmailCode = '';
+  showToast('Login cancelled.');
+}
+
+async function secEmailSendCode() {
+  const emailInput = document.getElementById('sec-email-input').value.trim();
+  if(!emailInput) return showToast('Please enter your email.');
+  if(!emailInput.includes('@')) return showToast('Enter a valid email address.');
+
+  const btn = document.getElementById('sec-email-send-btn');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  _secEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/send-verification', {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput, code: _secEmailCode, username: _pendingLoginUser?.username || '' })
+    });
+
+    if(res.ok) {
+      document.getElementById('sec-email-code-row').style.display = 'block';
+      document.getElementById('sec-email-verify-btn').style.display = 'block';
+      btn.textContent = 'Resend Code';
+      btn.disabled = false;
+      showToast('Code sent! Check your email.');
+    } else {
+      btn.textContent = 'Send Verification Code';
+      btn.disabled = false;
+      showToast('Could not send email. Try security question instead.');
+    }
+  } catch(e) {
+    btn.textContent = 'Send Verification Code';
+    btn.disabled = false;
+    showToast('Email failed. Try security question instead.');
+  }
+}
+
+async function secEmailVerify() {
+  const entered = document.getElementById('sec-email-code-input').value.trim();
+  if(!entered || entered.length !== 6) return showToast('Enter the 6-digit code.');
+  if(entered !== _secEmailCode) return showToast('Wrong code. Check your email and try again.');
+
+  document.getElementById('modal-security-email').style.display = 'none';
+  showLoading('Verifying...');
+  await completeLogin(_pendingLoginUser, _pendingLoginToken, _pendingLoginIp);
+  _secEmailCode = '';
+  _pendingLoginUser = null;
+}
+
+async function secQuestionVerify() {
+  const answer = (document.getElementById('sec-question-answer').value.trim()).toLowerCase();
+  if(!answer) return showToast('Please enter your answer.');
+  const hashed = await hashPassword(answer);
+  if(hashed !== _pendingLoginUser?.sec_answer) {
+    showToast('Wrong answer. Try again.');
+    document.getElementById('sec-question-answer').value = '';
+    return;
+  }
+  document.getElementById('modal-security-phone').style.display = 'none';
+  showLoading('Verifying...');
+  await completeLogin(_pendingLoginUser, _pendingLoginToken, _pendingLoginIp);
+  _pendingLoginUser = null;
+}
+
 </script>
+
+  <!-- ══ SECURITY CHECK — EMAIL MODAL ══ -->
+  <div id="modal-security-email" style="display:none;position:fixed;inset:0;background:#000;z-index:9000;flex-direction:column;padding:24px 20px;">
+    <div style="max-width:420px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-top:10px;">
+      <div>
+        <p style="font-size:10px;color:rgba(176,38,255,0.5);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Security Check</p>
+        <h2 style="font-size:1.4rem;font-weight:900;color:#b026ff;text-shadow:0 0 12px rgba(176,38,255,0.6);line-height:1.2;">Security Check<br>Your Email</h2>
+        <p style="font-size:11px;color:rgba(176,38,255,0.5);margin-top:8px;">We detected a login from a new device or location. Verify your identity to continue.</p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;color:#b026ff;margin-bottom:6px;letter-spacing:0.04em;">EMAIL <span style="color:rgba(176,38,255,0.5);font-size:9px;">(Required)</span></p>
+        <input id="sec-email-input" type="email" placeholder="Email, To verify your identity"
+          style="background:#000;border:1.5px solid #b026ff;border-radius:10px;padding:12px 14px;color:#b026ff;font-family:inherit;font-size:14px;width:100%;outline:none;box-shadow:0 0 8px rgba(176,38,255,0.2);text-align:left;box-sizing:border-box;">
+        <p id="sec-email-hint" style="font-size:9px;color:rgba(176,38,255,0.4);margin-top:4px;"></p>
+      </div>
+      <div id="sec-email-code-row" style="display:none;">
+        <p style="font-size:11px;font-weight:700;color:#b026ff;margin-bottom:6px;">Verification Code</p>
+        <input id="sec-email-code-input" type="text" placeholder="Enter 6-digit code" maxlength="6"
+          style="background:#000;border:1.5px solid #b026ff;border-radius:10px;padding:12px 14px;color:#b026ff;font-family:inherit;font-size:18px;width:100%;outline:none;letter-spacing:0.3em;text-align:center;box-sizing:border-box;">
+      </div>
+      <button id="sec-email-send-btn" onclick="secEmailSendCode()"
+        style="background:#b026ff;border:none;border-radius:10px;padding:13px;color:#fff;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer;text-shadow:none;width:100%;">
+        Send Verification Code
+      </button>
+      <button id="sec-email-verify-btn" onclick="secEmailVerify()" style="display:none;background:rgba(176,38,255,0.15);border:1.5px solid #b026ff;border-radius:10px;padding:13px;color:#b026ff;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer;width:100%;">
+        Confirm Code
+      </button>
+      <button onclick="secCancelLogin()"
+        style="background:transparent;border:1px solid rgba(176,38,255,0.25);border-radius:10px;padding:11px;color:rgba(176,38,255,0.6);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%;">
+        Cancel
+      </button>
+      <button onclick="showSecurityPhone()"
+        style="background:transparent;border:none;padding:6px;color:rgba(176,38,255,0.4);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;text-align:center;width:100%;">
+        Continue with Security Question instead &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SECURITY CHECK — SECURITY QUESTION MODAL ══ -->
+  <div id="modal-security-phone" style="display:none;position:fixed;inset:0;background:#000;z-index:9000;flex-direction:column;padding:24px 20px;">
+    <div style="max-width:420px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-top:10px;">
+      <div>
+        <p style="font-size:10px;color:rgba(176,38,255,0.5);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Security Check</p>
+        <h2 style="font-size:1.4rem;font-weight:900;color:#b026ff;text-shadow:0 0 12px rgba(176,38,255,0.6);line-height:1.2;">Security Question<br>Verify Identity</h2>
+        <p style="font-size:11px;color:rgba(176,38,255,0.5);margin-top:8px;">Answer your security question to prove it&#39;s you.</p>
+      </div>
+      <div>
+        <p id="sec-question-label" style="font-size:13px;font-weight:700;color:#b026ff;margin-bottom:8px;line-height:1.4;"></p>
+        <input id="sec-question-answer" type="text" placeholder="Your answer to verify your identity"
+          style="background:#000;border:1.5px solid #b026ff;border-radius:10px;padding:12px 14px;color:#b026ff;font-family:inherit;font-size:14px;width:100%;outline:none;box-shadow:0 0 8px rgba(176,38,255,0.2);text-align:left;box-sizing:border-box;">
+      </div>
+      <button onclick="secQuestionVerify()"
+        style="background:#b026ff;border:none;border-radius:10px;padding:13px;color:#fff;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer;text-shadow:none;width:100%;">
+        Verify Identity
+      </button>
+      <button onclick="secCancelLogin()"
+        style="background:transparent;border:1px solid rgba(176,38,255,0.25);border-radius:10px;padding:11px;color:rgba(176,38,255,0.6);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%;">
+        Cancel
+      </button>
+      <button onclick="showSecurityEmail()"
+        style="background:transparent;border:none;padding:6px;color:rgba(176,38,255,0.4);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;text-align:center;width:100%;">
+        &larr; Try Email Verification instead
+      </button>
+    </div>
+  </div>
+
 </body>
 </html>
