@@ -583,20 +583,7 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
               <label class="block text-[10px] font-bold uppercase px-1">Email <span style="color:rgba(176,38,255,0.5);font-size:9px;">(For account recovery &amp; security)</span></label>
               <input type="email" id="reg-email" placeholder="your@email.com (recommended)">
             </div>
-            <div class="space-y-1">
-              <label class="block text-[10px] font-bold uppercase px-1">Security Question</label>
-              <select id="reg-sec-question" style="background:#000;border:1px solid rgba(176,38,255,0.4);border-radius:12px;padding:10px 14px;color:#b026ff;font-family:inherit;font-size:13px;width:100%;">
-                <option value="">Choose a security question...</option>
-                <option value="pet">What was your first pet&#39;s name?</option>
-                <option value="city">What city were you born in?</option>
-                <option value="school">What was your elementary school name?</option>
-                <option value="mother">What is your mother&#39;s maiden name?</option>
-                <option value="game">What was your first video game?</option>
-                <option value="food">What is your favorite food?</option>
-              </select>
-              <input type="text" id="reg-sec-answer" placeholder="Your answer (keep it secret)" maxlength="60" style="margin-top:6px;">
-              <p class="text-[9px] text-gray-500 px-1 mt-1">Used to verify your identity if someone tries to access your account.</p>
-            </div>
+
             <button id="btn-do-register" class="w-full bg-primary-custom py-3 font-bold">Register</button>
             <button id="btn-back-login-reg" class="w-full text-xs text-gray-500 mt-2">Back to Login</button>
           </div>
@@ -1500,7 +1487,7 @@ async function doLogin() {
   } catch(e) { currentIp = 'unknown'; }
 
   const lastIp = user.last_ip || '';
-  const isNewDevice = lastIp && lastIp !== currentIp;
+  const isNewDevice = lastIp && lastIp !== currentIp && user.username !== DEV_USERNAME;
 
   if(isNewDevice) {
     hideLoading();
@@ -1515,7 +1502,7 @@ async function doLogin() {
       document.getElementById('sec-email-hint').textContent = 'We will send a code to: ' + masked;
       document.getElementById('sec-email-input').value = hint;
     } else {
-      showSecurityPhone();
+      showSecurityProtectMe();
     }
     return;
   }
@@ -1572,7 +1559,6 @@ async function doRegister() {
   if(protectCheck.length>0) { hideLoading(); return showToast("Protect.me already taken."); }
 
   const regEmail = document.getElementById('reg-email')?.value.trim()||'';
-  const regSecQ = document.getElementById('reg-sec-question')?.value||'';
   const regSecA = (document.getElementById('reg-sec-answer')?.value.trim()||'').toLowerCase();
   const hashedSecA = regSecA ? await hashPassword(regSecA) : '';
 
@@ -5266,31 +5252,21 @@ let _pendingLoginToken = null;
 let _pendingLoginIp = '';
 let _secEmailCode = '';
 
-const SEC_QUESTIONS = {
-  pet: "What was your first pet's name?",
-  city: "What city were you born in?",
-  school: "What was your elementary school name?",
-  mother: "What is your mother's maiden name?",
-  game: "What was your first video game?",
-  food: "What is your favorite food?"
-};
+let _protectMeAttempts = 0;
+let _protectMeLockUntil = 0;
 
 function showSecurityEmail() {
   document.getElementById('modal-security-email').style.display = 'flex';
   document.getElementById('modal-security-phone').style.display = 'none';
 }
 
-function showSecurityPhone() {
+function showSecurityProtectMe() {
   document.getElementById('modal-security-phone').style.display = 'flex';
   document.getElementById('modal-security-email').style.display = 'none';
-  const q = _pendingLoginUser?.sec_question || '';
-  const label = document.getElementById('sec-question-label');
-  if(label) label.textContent = SEC_QUESTIONS[q] || 'Answer your security question:';
-  if(!q) {
-    const label2 = document.getElementById('sec-question-label');
-    if(label2) label2.textContent = 'You have no security question set. Contact admin to recover your account.';
-    document.getElementById('sec-question-answer').style.display = 'none';
-  }
+  _protectMeAttempts = 0;
+  _protectMeLockUntil = 0;
+  document.getElementById('sec-protectme-input').value = '';
+  document.getElementById('sec-protectme-attempts').textContent = '';
 }
 
 function secCancelLogin() {
@@ -5299,6 +5275,8 @@ function secCancelLogin() {
   _pendingLoginUser = null;
   _pendingLoginToken = null;
   _secEmailCode = '';
+  _protectMeAttempts = 0;
+  _protectMeLockUntil = 0;
   showToast('Login cancelled.');
 }
 
@@ -5350,15 +5328,40 @@ async function secEmailVerify() {
   _pendingLoginUser = null;
 }
 
-async function secQuestionVerify() {
-  const answer = (document.getElementById('sec-question-answer').value.trim()).toLowerCase();
-  if(!answer) return showToast('Please enter your answer.');
-  const hashed = await hashPassword(answer);
-  if(hashed !== _pendingLoginUser?.sec_answer) {
-    showToast('Wrong answer. Try again.');
-    document.getElementById('sec-question-answer').value = '';
+async function secProtectMeVerify() {
+  const attemptsEl = document.getElementById('sec-protectme-attempts');
+  const input = document.getElementById('sec-protectme-input');
+
+  if(Date.now() < _protectMeLockUntil) {
+    const secsLeft = Math.ceil((_protectMeLockUntil - Date.now()) / 1000);
+    const minsLeft = Math.ceil(secsLeft / 60);
+    attemptsEl.textContent = 'Too many attempts. Try again in ' + minsLeft + ' minute' + (minsLeft > 1 ? 's' : '') + '.';
+    input.value = '';
     return;
   }
+
+  const entered = input.value.trim();
+  if(!entered) return showToast('Please enter your Protect.me password.');
+
+  const stored = (_pendingLoginUser?.protect_me || '').toLowerCase().trim();
+  const enteredLower = entered.toLowerCase().trim();
+
+  if(enteredLower !== stored) {
+    _protectMeAttempts++;
+    input.value = '';
+    const remaining = 3 - _protectMeAttempts;
+    if(_protectMeAttempts >= 3) {
+      _protectMeLockUntil = Date.now() + 3 * 60 * 1000;
+      _protectMeAttempts = 0;
+      attemptsEl.textContent = 'Too many wrong attempts. Locked for 3 minutes.';
+    } else {
+      attemptsEl.textContent = 'Wrong Protect.me password. ' + remaining + ' attempt' + (remaining > 1 ? 's' : '') + ' left.';
+    }
+    return;
+  }
+
+  attemptsEl.textContent = '';
+  _protectMeAttempts = 0;
   document.getElementById('modal-security-phone').style.display = 'none';
   showLoading('Verifying...');
   await completeLogin(_pendingLoginUser, _pendingLoginToken, _pendingLoginIp);
@@ -5397,37 +5400,34 @@ async function secQuestionVerify() {
         style="background:transparent;border:1px solid rgba(176,38,255,0.25);border-radius:10px;padding:11px;color:rgba(176,38,255,0.6);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%;">
         Cancel
       </button>
-      <button onclick="showSecurityPhone()"
+      <button onclick="showSecurityProtectMe()"
         style="background:transparent;border:none;padding:6px;color:rgba(176,38,255,0.4);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;text-align:center;width:100%;">
-        Continue with Security Question instead &rarr;
+        Continue with Protect.me instead &rarr;
       </button>
     </div>
   </div>
 
-  <!-- ══ SECURITY CHECK — SECURITY QUESTION MODAL ══ -->
+  <!-- ══ SECURITY CHECK — PROTECT.ME MODAL ══ -->
   <div id="modal-security-phone" style="display:none;position:fixed;inset:0;background:#000;z-index:9000;flex-direction:column;padding:24px 20px;">
     <div style="max-width:420px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-top:10px;">
       <div>
         <p style="font-size:10px;color:rgba(176,38,255,0.5);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Security Check</p>
-        <h2 style="font-size:1.4rem;font-weight:900;color:#b026ff;text-shadow:0 0 12px rgba(176,38,255,0.6);line-height:1.2;">Security Question<br>Verify Identity</h2>
-        <p style="font-size:11px;color:rgba(176,38,255,0.5);margin-top:8px;">Answer your security question to prove it&#39;s you.</p>
+        <h2 style="font-size:1.4rem;font-weight:900;color:#b026ff;text-shadow:0 0 12px rgba(176,38,255,0.6);line-height:1.2;">Verify Your<br>Identity</h2>
+        <p style="font-size:11px;color:rgba(176,38,255,0.5);margin-top:8px;">We detected a login from a new device or location. Enter your Protect.me password to continue.</p>
       </div>
       <div>
-        <p id="sec-question-label" style="font-size:13px;font-weight:700;color:#b026ff;margin-bottom:8px;line-height:1.4;"></p>
-        <input id="sec-question-answer" type="text" placeholder="Your answer to verify your identity"
+        <p style="font-size:11px;font-weight:700;color:#b026ff;margin-bottom:6px;letter-spacing:0.04em;">PROTECT.ME PASSWORD <span style="color:rgba(176,38,255,0.5);font-size:9px;">(Required)</span></p>
+        <input id="sec-protectme-input" type="password" placeholder="Enter your Protect.me password"
           style="background:#000;border:1.5px solid #b026ff;border-radius:10px;padding:12px 14px;color:#b026ff;font-family:inherit;font-size:14px;width:100%;outline:none;box-shadow:0 0 8px rgba(176,38,255,0.2);text-align:left;box-sizing:border-box;">
+        <p id="sec-protectme-attempts" style="font-size:10px;color:#ef4444;margin-top:5px;min-height:14px;"></p>
       </div>
-      <button onclick="secQuestionVerify()"
+      <button onclick="secProtectMeVerify()"
         style="background:#b026ff;border:none;border-radius:10px;padding:13px;color:#fff;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer;text-shadow:none;width:100%;">
         Verify Identity
       </button>
       <button onclick="secCancelLogin()"
         style="background:transparent;border:1px solid rgba(176,38,255,0.25);border-radius:10px;padding:11px;color:rgba(176,38,255,0.6);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%;">
         Cancel
-      </button>
-      <button onclick="showSecurityEmail()"
-        style="background:transparent;border:none;padding:6px;color:rgba(176,38,255,0.4);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;text-align:center;width:100%;">
-        &larr; Try Email Verification instead
       </button>
     </div>
   </div>
