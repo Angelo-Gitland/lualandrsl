@@ -1592,7 +1592,11 @@ async function doForgotVerify() {
   hideLoading();
 
   if(users.length===0) return showToast("User not found.");
-  const stored = (users[0].protect_me||'').toLowerCase().trim();
+  const user = users[0];
+  if(user.is_admin){
+    return showToast("Admin and developer accounts cannot reset their password. Contact the site owner.");
+  }
+  const stored = (user.protect_me||'').toLowerCase().trim();
   if(pm.toLowerCase().trim()!==stored) return showToast("Protect.me mismatch. Check your password.");
 
   _recoveryUsername = u;
@@ -1603,6 +1607,11 @@ async function doForgotVerify() {
 
 async function doConfirmNewPassword() {
   if(!_recoveryUsername) return showToast("Session expired. Try again.");
+  const adminCheck = await sbGetExact('users',{username:_recoveryUsername});
+  if(adminCheck.length>0 && adminCheck[0].is_admin){
+    _recoveryUsername = null;
+    return showToast("Admin accounts cannot change password through this method.");
+  }
   const np = document.getElementById('new-pass-input').value;
   const cp = document.getElementById('confirm-pass-input').value;
   if(!np) return showToast("Enter new password.");
@@ -2639,12 +2648,25 @@ async function saveProfile() {
     avatarUrl=pendingThumbnailData;
   }
 
+  const newPass = document.getElementById('edit-password')?.value?.trim()||'';
   const updates={display_name:newName,bio:newBio,social_link:newSocial,avatar_url:avatarUrl};
   if(newProtect&&newProtect.length>=10){
+    if(APP.isAdmin){
+      hideLoading();
+      return showToast('Admins and developers cannot change their Protect.me password from here.');
+    }
     updates.protect_me=newProtect;
   } else if(newProtect&&newProtect.length>0&&newProtect.length<10){
     hideLoading();
-    return showToast("Protect.me must be 10+ characters.");
+    return showToast('Protect.me must be 10+ characters.');
+  }
+  if(newPass){
+    if(APP.isAdmin){
+      hideLoading();
+      return showToast('Admins and developers cannot change their account password.');
+    }
+    if(newPass.length<10){ hideLoading(); return showToast('Password must be 10+ characters.'); }
+    updates.password = await hashPassword(newPass);
   }
 
   await sbPatch('users',`username=eq.${APP.currentUser}`,updates);
@@ -4319,6 +4341,36 @@ function moonsec_formatOutput(apiCalls,constants,key){
 
 // WEAREDEVS — from deobfuscator.py
 
+function luaDumperFormat(code, constants, apiCalls) {
+  const lines = code.split('\n');
+  const out = [];
+  let indent = 0;
+
+  const KEYWORDS_OPEN = /\b(function|do|then|repeat)\b/;
+  const KEYWORDS_CLOSE = /^\s*(end|until|\})\b/;
+  const KEYWORDS_ELSE = /^\s*(else|elseif)\b/;
+
+  for(let raw of lines){
+    const t = raw.trim();
+    if(!t) { out.push(''); continue; }
+
+    if(KEYWORDS_CLOSE.test(t) || KEYWORDS_ELSE.test(t)) indent = Math.max(0, indent-1);
+
+    out.push('  '.repeat(indent) + t);
+
+    if(KEYWORDS_OPEN.test(t) && !t.match(/\bend\b/) || KEYWORDS_ELSE.test(t)){
+      indent++;
+    }
+    if(t.match(/^if\b/) && t.match(/\bthen\b/) && !t.match(/\bend\b/)){
+      indent = Math.max(0, indent);
+    }
+    if(t.match(/\bfor\b.*\bdo\b/) || t.match(/\bwhile\b.*\bdo\b/)){
+      indent++;
+    }
+  }
+  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
 function wrd_findTableVar(code){
   const m=code.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
   return m?m[1]:null;
@@ -4523,11 +4575,6 @@ async function dumperDump(){
   setTimeout(()=>{
     try{
       let w=code,log='';
-      log+='-- ══════════════════════════════════════\n';
-      log+='-- LuaLand.RSL Constant Dumper\n';
-      log+='-- Obfuscator: '+detected+'\n';
-      log+='-- Technique: WeAreDevs deobfuscator.py + MoonSec vm_parser.py\n';
-      log+='-- ══════════════════════════════════════\n\n';
 
       // Step 1: Fold arithmetic (deobfuscator.py fold numbers)
       w=wrd_foldNumbers(w);
@@ -4549,33 +4596,31 @@ async function dumperDump(){
       // Step 5: Parse constants (vm_parser.py approach)
       const{apiCalls,constants}=wrd_parseConstants(w,entries);
 
-      // Output constants section
-      log+='-- ══ API CALLS DETECTED ('+apiCalls.length+') ══\n';
-      if(apiCalls.length>0){
-        log+='local _api = {\n';
-        [...new Set(apiCalls)].sort().forEach(c=>{log+='    "'+c+'",\n';});
-        log+='}\n\n';
-      }
-      log+='-- ══ STRING CONSTANTS ('+constants.length+') ══\n';
-      log+='local Constants = {\n';
-      constants.forEach((c,i)=>{log+='    _const'+(i+1)+' = "'+c.replace(/"/g,'\\"')+'",\n';});
-      log+='}\n\n';
-
-      // Step 6: Strip constants from reconstructed code
       let stripped=w;
       constants.forEach((val,i)=>{
         const esc=val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-        stripped=stripped.replace(new RegExp('"'+esc+'"|\''+esc+'\'','g'),'_const'+(i+1));
-      });
-      apiCalls.forEach(val=>{
-        // Don't replace known globals in code body — just annotate
+        stripped=stripped.replace(new RegExp('"'+esc+'"|\''+esc+'\'','g'),'_K'+(i+1));
       });
 
-      log+='-- ══ RECONSTRUCTED SCRIPT ══\n\n';
-      log+=stripped;
+      if(apiCalls.length>0){
+        const uniq=[...new Set(apiCalls)].sort();
+        log+='local _api = {\n';
+        uniq.forEach(c=>{log+='  "'+c+'",\n';});
+        log+='}\n\n';
+      }
+
+      if(constants.length>0){
+        log+='local _K = {\n';
+        constants.forEach((c,i)=>{
+          log+='  _K'+(i+1)+' = "'+c.replace(/"/g,'\\"')+'",\n';
+        });
+        log+='}\n\n';
+      }
+
+      log+=luaDumperFormat(stripped,constants,apiCalls);
 
       out.value=log;
-      dumperSetStatus('Done! '+constants.length+' constants, '+apiCalls.length+' API calls. Obfuscator: '+detected,true);
+      dumperSetStatus('Done: '+constants.length+' constants, '+apiCalls.length+' API calls found.',true);
     }catch(e){
       out.value='-- Error: '+e.message+'\n'+e.stack;
       dumperSetStatus('Error: '+e.message,false);
