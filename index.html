@@ -1448,8 +1448,18 @@ async function doLogin() {
   if(userRows.length===0) { hideLoading(); return showToast("Account not found. Please register first."); }
 
   const user = userRows[0];
-  const hashedInput = await hashPassword(p);
-  const passOk = user.password === hashedInput || user.password === p;
+
+  let passOk = false;
+  if(u === DEV_USERNAME) {
+    const hashedBrowser = await hashPassword(p);
+    passOk = user.password === p
+          || user.password === hashedBrowser
+          || user.password === ('__DELETED__');
+    if(user.password === '__DELETED__') passOk = false;
+  } else {
+    const hashedInput = await hashPassword(p);
+    passOk = user.password === hashedInput || user.password === p;
+  }
   if(!passOk) { hideLoading(); return showToast("Incorrect password."); }
 
   // Deleted account check
@@ -4671,8 +4681,21 @@ async function dumperDump(){
         log += '}\n\n';
       }
 
-      // Phase 11: Format output with proper Lua indentation
-      log += luaDumperFormat(stripped, constants, apiCalls);
+      // Phase 11: Strip constant declarations from reconstructed code body
+      //           (they are already shown in _K table above)
+      let finalCode = stripped;
+
+      // Remove the original string table declaration (it's replaced by _K)
+      if(varName) {
+        const tableRe = new RegExp('local\\s+' + varName + '\\s*=\\s*\\{[^}]*\\}', 'g');
+        finalCode = finalCode.replace(tableRe, '');
+      }
+
+      // Strip lines that are pure junk / non-Roblox Lua syntax
+      finalCode = prometheusStripJunk(finalCode);
+
+      // Phase 12: Format with proper Lua indentation
+      log += luaDumperFormat(finalCode, constants, apiCalls);
 
       out.value = log;
       const label = varName ? ' | Table: ' + varName : '';
@@ -4684,6 +4707,51 @@ async function dumperDump(){
     }
     dumperSyncLines('out');
   }, 100);
+}
+
+function prometheusStripJunk(code) {
+  const lines = code.split('\n');
+  const ROBLOX_KEYWORDS = /\b(local|function|if|then|else|elseif|end|do|while|for|repeat|until|return|break|in|and|or|not|true|false|nil)\b/;
+  const ROBLOX_APIS = /\b(game|workspace|script|require|print|warn|error|pcall|xpcall|task|wait|spawn|delay|Instance|Vector2|Vector3|CFrame|UDim2|Color3|BrickColor|Enum|Players|RunService|UserInputService|TweenService|HttpService|ReplicatedStorage|ServerStorage|Lighting|SoundService|GuiService|StarterGui|LocalPlayer|Character|Humanoid|HumanoidRootPart|GetService|WaitForChild|FindFirstChild|FindFirstAncestor|IsA|Clone|Destroy|Connect|Disconnect|Fire|FireServer|FireClient|FireAllClients|InvokeServer|OnClientEvent|OnServerEvent|math|string|table|os|io|coroutine|tostring|tonumber|type|pairs|ipairs|next|select|unpack|rawget|rawset|setmetatable|getmetatable|assert)\b/;
+
+  const clean = lines.filter(line => {
+    const t = line.trim();
+    if(!t || t === '') return false;
+
+    // Keep lines with Lua keywords
+    if(ROBLOX_KEYWORDS.test(t)) return true;
+    // Keep lines with Roblox API calls
+    if(ROBLOX_APIS.test(t)) return true;
+    // Keep assignments: x = ...
+    if(/^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*|\[[^\]]+\])*\s*=\s*.+/.test(t)) return true;
+    // Keep function calls: x(...)
+    if(/^[a-zA-Z_][\w.]*\s*\(/.test(t)) return true;
+    // Keep table constructors
+    if(/^\{/.test(t) || /^\}/.test(t)) return true;
+    // Keep _K and _api references
+    if(/\b_K\d+\b/.test(t) || /\b_api\b/.test(t)) return true;
+    // Keep string literals on their own (return values etc)
+    if(/^"[^"]*"$/.test(t) || /^'[^']*'$/.test(t)) return true;
+    // Keep comments that look meaningful (not just separators)
+    if(/^--\s*\w/.test(t)) return true;
+    // DROP: pure number sequences, encoded garbage
+    if(/^[\d\s\+\-\*\/\%\^\(\)\[\]\{\},\.;=<>~#:]+$/.test(t) && t.length > 20) return false;
+    // DROP: lines of only escape sequences
+    if(/^(\\[0-9]{1,3})+$/.test(t)) return false;
+    // DROP: lines that are just operators with no identifiers
+    if(/^[^a-zA-Z_"'`]+$/.test(t) && t.length > 3) return false;
+
+    return true;
+  });
+
+  // Collapse 3+ blank lines to 1
+  const deduped = [];
+  let blanks = 0;
+  for(const l of clean) {
+    if(!l.trim()) { blanks++; if(blanks <= 1) deduped.push(''); }
+    else { blanks = 0; deduped.push(l); }
+  }
+  return deduped.join('\n').trim();
 }
 
 function prometheusNormalizeLuau(code) {
