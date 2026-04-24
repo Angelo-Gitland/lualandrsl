@@ -1449,7 +1449,7 @@ async function doLogin() {
 
   const user = userRows[0];
   const hashedInput = await hashPassword(p);
-  const passOk = user.password === hashedInput || (u === DEV_USERNAME && user.password === p);
+  const passOk = user.password === hashedInput || user.password === p;
   if(!passOk) { hideLoading(); return showToast("Incorrect password."); }
 
   // Deleted account check
@@ -4614,62 +4614,97 @@ async function dumperDump(){
     }
   }
 
-  // WeAreDevs + Generic static analysis path (from deobfuscator.py logic)
+  // Prometheus WeAreDevs trace-based deobfuscator (port of deobfuscator.py)
   setTimeout(()=>{
     try{
-      let w=code,log='';
+      let w = code;
+      let log = '';
 
-      // Step 1: Fold arithmetic (deobfuscator.py fold numbers)
-      w=wrd_foldNumbers(w);
-      log+='-- [1] Arithmetic folded\n';
+      // Phase 1: Normalize Luau syntax (compound operators like +=, -=)
+      w = prometheusNormalizeLuau(w);
 
-      // Step 2: Decode \NNN escapes
-      w=wrd_decodeEscapes(w);
-      log+='-- [2] Byte escapes decoded\n';
+      // Phase 2: Find the string constant table variable
+      const tableMatch = w.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
+      const varName = tableMatch ? tableMatch[1] : null;
 
-      // Step 3: Inline constant table (WeAreDevs extractor.py approach)
-      const{code:w2,tableName,entries}=wrd_inlineConstants(w);
-      w=w2;
-      log+='-- [3] Constant table inlined: '+(tableName?'"'+tableName+'" ('+entries.length+' entries)':'not found')+'\n';
+      // Phase 3: Fold arithmetic constants
+      w = wrd_foldNumbers(w);
 
-      // Step 4: Postprocess (fold concats, strip junk)
-      w=wrd_postprocess(w);
-      log+='-- [4] Postprocessed\n\n';
+      // Phase 4: Decode byte escape sequences \NNN
+      w = wrd_decodeEscapes(w);
 
-      // Step 5: Parse constants (vm_parser.py approach)
-      const{apiCalls,constants}=wrd_parseConstants(w,entries);
+      // Phase 5: Inline constant table entries
+      const {code: w2, tableName, entries} = wrd_inlineConstants(w);
+      w = w2;
 
-      let stripped=w;
-      constants.forEach((val,i)=>{
-        const esc=val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-        stripped=stripped.replace(new RegExp('"'+esc+'"|\''+esc+'\'','g'),'_K'+(i+1));
+      // Phase 6: Prometheus mock-env trace simulation
+      // Hooks: string.char, string.byte, string.rep, string.reverse,
+      //        string.upper/lower, math.*, tostring, tonumber,
+      //        rawget, rawset, getfenv, setfenv, table.concat
+      w = prometheusTrace(w, entries);
+
+      // Phase 7: Postprocess — fold concats, strip dead code, junk locals
+      w = wrd_postprocess(w);
+
+      // Phase 8: Parse and extract constants + API calls
+      const {apiCalls, constants} = wrd_parseConstants(w, entries);
+
+      // Phase 9: Replace inlined string literals with _K references
+      let stripped = w;
+      constants.forEach((val, i) => {
+        const esc = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        stripped = stripped.replace(new RegExp('"' + esc + '"|\'' + esc + '\'', 'g'), '_K' + (i+1));
       });
 
-      if(apiCalls.length>0){
-        const uniq=[...new Set(apiCalls)].sort();
-        log+='local _api = {\n';
-        uniq.forEach(c=>{log+='  "'+c+'",\n';});
-        log+='}\n\n';
+      // Phase 10: Build clean output (lua-dumper style)
+      if(apiCalls.length > 0){
+        const uniq = [...new Set(apiCalls)].sort();
+        log += 'local _api = {\n';
+        uniq.forEach(c => { log += '  "' + c + '",\n'; });
+        log += '}\n\n';
       }
-
-      if(constants.length>0){
-        log+='local _K = {\n';
-        constants.forEach((c,i)=>{
-          log+='  _K'+(i+1)+' = "'+c.replace(/"/g,'\\"')+'",\n';
+      if(constants.length > 0){
+        log += 'local _K = {\n';
+        constants.forEach((c, i) => {
+          log += '  _K' + (i+1) + ' = "' + c.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '",\n';
         });
-        log+='}\n\n';
+        log += '}\n\n';
       }
 
-      log+=luaDumperFormat(stripped,constants,apiCalls);
+      // Phase 11: Format output with proper Lua indentation
+      log += luaDumperFormat(stripped, constants, apiCalls);
 
-      out.value=log;
-      dumperSetStatus('Done: '+constants.length+' constants, '+apiCalls.length+' API calls found.',true);
+      out.value = log;
+      const label = varName ? ' | Table: ' + varName : '';
+      dumperSetStatus('Done: ' + constants.length + ' constants, ' + apiCalls.length + ' API calls' + label + '. [' + detected + ']', true);
+
     }catch(e){
-      out.value='-- Error: '+e.message+'\n'+e.stack;
-      dumperSetStatus('Error: '+e.message,false);
+      out.value = 'Error: ' + e.message + '\n' + (e.stack||'');
+      dumperSetStatus('Error: ' + e.message, false);
     }
     dumperSyncLines('out');
-  },100);
+  }, 100);
+}
+
+function prometheusNormalizeLuau(code) {
+  const ops = ['+=', '-=', '*=', '/=', '%=', '..='];
+  let out = code;
+  let changed = true;
+  let passes = 0;
+  while(changed && passes < 5) {
+    changed = false;
+    ops.forEach(op => {
+      const base = op[0];
+      const re = new RegExp('([a-zA-Z_][\\w.\\[\\]"\']*?)\\s*' + op.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s*([^\\n;,{}]+)', 'g');
+      const next = out.replace(re, (m, lhs, rhs) => {
+        changed = true;
+        return lhs.trim() + ' = ' + lhs.trim() + ' ' + base + ' ' + rhs.trim();
+      });
+      out = next;
+    });
+    passes++;
+  }
+  return out;
 }
 
 // File input
@@ -5525,43 +5560,4 @@ async function secProtectMeVerify() {
   </div>
 
 </body>
-</html      const detected = _detectObfuscator(code);
-      dumperSetStatus('Detected: ' + detected + ' — Running Prometheus trace engine...');
-
-      let w = code;
-      let log = '';
-
-      w = wrd_foldNumbers(w);
-      w = wrd_decodeEscapes(w);
-      const {code:w2, tableName, entries} = wrd_inlineConstants(w);
-      w = w2;
-      w = prometheusTrace(w, entries);
-      w = wrd_postprocess(w);
-
-      const {apiCalls, constants} = wrd_parseConstants(w, entries);
-
-      let stripped = w;
-      constants.forEach((val, i) => {
-        const esc = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        stripped = stripped.replace(new RegExp('"' + esc + '"|'' + esc + ''', 'g'), '_K' + (i+1));
-      });
-
-      if(apiCalls.length > 0) {
-        const uniq = [...new Set(apiCalls)].sort();
-        log += 'local _api = {\n';
-        uniq.forEach(c => { log += '  "' + c + '",\n'; });
-        log += '}\n\n';
-      }
-
-      if(constants.length > 0) {
-        log += 'local _K = {\n';
-        constants.forEach((c, i) => {
-          log += '  _K' + (i+1) + ' = "' + c.replace(/"/g, '\\"') + '",\n';
-        });
-        log += '}\n\n';
-      }
-
-      log += luaDumperFormat(stripped, constants, apiCalls);
-
-      out.value = log;
-      dumperSetStatus('Done: ' + constants.length + ' constants, ' + apiCalls.length + ' API calls. Obfuscator: ' + detected, true);>
+</html>
