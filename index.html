@@ -1020,6 +1020,14 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
         <p style="font-size:9px;opacity:0.45;padding:0 4px;color:var(--primary-color)!important;">Pre-filled with your name. Change it if someone else made this script.</p>
       </div>
       <div><label class="text-sm font-bold">Description</label><textarea id="upload-description" maxlength="500" placeholder="Describe the script..."></textarea></div>
+      <div id="game-link-field" style="display:none;">
+        <label class="text-sm font-bold" style="color:#b026ff;display:block;margin-bottom:6px;">Game Link</label>
+        <input type="url" id="upload-game-link" maxlength="1000"
+          placeholder="Game Link"
+          style="border:1.5px solid #b026ff;color:#b026ff;background:#000;border-radius:10px;padding:10px 14px;width:100%;font-size:13px;outline:none;box-sizing:border-box;"
+          oninput="validateGameLink(this)">
+        <p id="game-link-error" style="font-size:10px;color:#ef4444;margin-top:4px;min-height:14px;"></p>
+      </div>
       <div><label class="text-sm font-bold" id="label-code">Code Box</label><textarea id="upload-code" class="font-mono text-sm bg-black" placeholder="Place your script here..."></textarea></div>
       <div><label class="text-sm font-bold">Type</label><select id="upload-type"></select></div>
       <div>
@@ -1182,11 +1190,16 @@ function base64ToBlob(base64, mimeType='image/jpeg') {
           <div><span class="block text-xs font-bold uppercase opacity-60">Description:</span><p id="view-description" class="whitespace-pre-wrap text-sm text-gray-200 leading-relaxed"></p></div>
           <div><span class="block text-xs font-bold uppercase opacity-60">Type:</span><span id="view-type-label" class="text-sm font-bold text-primary-custom"></span></div>
           <div><span class="block text-xs font-bold uppercase opacity-60">Tags:</span><div id="view-tags" class="flex flex-wrap gap-2 mt-1"></div></div>
+          <div id="view-game-link-row" style="display:none;"><span class="block text-xs font-bold uppercase opacity-60">Game:</span><a id="view-game-link" href="#" target="_blank" style="color:#b026ff;font-size:13px;word-break:break-all;font-weight:700;"></a></div>
+          <div><span class="block text-xs font-bold uppercase opacity-60">Date Posted:</span><span id="view-date-created" style="font-size:12px;color:rgba(176,38,255,0.7);font-weight:600;"></span></div>
         </div>
         <div id="view-code-section">
           <div class="flex justify-between items-center mb-2">
             <h3 class="text-sm font-bold uppercase tracking-wider">Source Code</h3>
-            <button id="btn-copy-code" class="text-xs bg-surface border border-gray-600 px-3 py-1 rounded-full">Copy</button>
+            <div style="display:flex;gap:6px;">
+              <button id="btn-copy-code" class="text-xs bg-surface border border-gray-600 px-3 py-1 rounded-full">Copy</button>
+              <button id="btn-download-code" class="text-xs bg-surface border border-primary-custom/40 text-primary-custom px-3 py-1 rounded-full">Download</button>
+            </div>
           </div>
           <div id="view-code" class="code-box text-primary-custom border-primary-custom/30"></div>
         </div>
@@ -1779,6 +1792,14 @@ async function submitPost() {
   const title=document.getElementById('upload-name').value.trim();
   const desc=document.getElementById('upload-description').value.trim();
   const code=document.getElementById('upload-code').value.trim();
+  const rawGameLink=(document.getElementById('upload-game-link')?.value||'').trim();
+  const gameLinkField=document.getElementById('game-link-field');
+  if(gameLinkField && gameLinkField.style.display!=='none' && rawGameLink) {
+    if(!/^https:\/\/www\.roblox\.com\/games\//.test(rawGameLink)){
+      return showToast('Invalid Game Link. Must start with: https://www.roblox.com/games/');
+    }
+  }
+  const gameLink = (gameLinkField && gameLinkField.style.display!=='none') ? rawGameLink : '';
   const scriptCreator=document.getElementById('upload-script-creator')?.value.trim()||'';
   if(!title||!desc||!code) return showToast("Please fill all required fields.");
   const now=Date.now();
@@ -1908,6 +1929,22 @@ async function openViewModal(post, table) {
   tagCont.innerHTML='';
   (post.tags||[]).forEach(t=>{const s=document.createElement('span');s.className='tag';s.textContent=t;tagCont.appendChild(s);});
 
+  const dateEl=document.getElementById('view-date-created');
+  if(dateEl && post.created_at) {
+    const d=new Date(post.created_at);
+    dateEl.textContent=d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+' at '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  const gameLinkRow=document.getElementById('view-game-link-row');
+  const gameLinkEl=document.getElementById('view-game-link');
+  if(gameLinkRow && gameLinkEl && post.game_link) {
+    gameLinkRow.style.display='block';
+    gameLinkEl.href=post.game_link;
+    gameLinkEl.textContent=post.game_link;
+  } else if(gameLinkRow) {
+    gameLinkRow.style.display='none';
+  }
+
   const avatarImg=document.getElementById('view-creator-avatar');
   avatarImg.src=post.uploader_avatar||DEFAULT_AVATAR;
   avatarImg.onclick=()=>viewUserProfile(post.creator);
@@ -1952,6 +1989,14 @@ async function openExecutorView(post) {
   const tagCont=document.getElementById('view-tags');
   tagCont.innerHTML='';
   (post.tags||[]).forEach(t=>{const s=document.createElement('span');s.className='tag';s.textContent=t;tagCont.appendChild(s);});
+
+  const dateEl2=document.getElementById('view-date-created');
+  if(dateEl2 && post.created_at){
+    const d=new Date(post.created_at);
+    dateEl2.textContent=d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+' at '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  }
+  const glRow2=document.getElementById('view-game-link-row');
+  if(glRow2) glRow2.style.display='none';
 
   const avatarImg=document.getElementById('view-creator-avatar');
   avatarImg.src=post.uploader_avatar||DEFAULT_AVATAR;
@@ -2618,18 +2663,10 @@ async function dbDeleteAccount(username) {
       sbDelete('notifications',`or=(target_user.eq.${username},from_user.eq.${username})`),
       sbDelete('reports',`reporter=eq.${encodeURIComponent(username)}`),
     ]);
-    // Soft-delete user row: keep it so login is permanently blocked
-    await sbPatch('users',`username=eq.${encodeURIComponent(username)}`,{
-      is_deleted: true,
-      session_token: null,
-      password: '__DELETED__',
-      display_name: '[Deleted]',
-      bio: '',
-      avatar_url: DEFAULT_AVATAR
-    });
+    await sbDelete('users',`username=eq.${encodeURIComponent(username)}`);
     dbSelectedUser=null;
     hideLoading();
-    showToast(`Account ${username} deleted. Login permanently blocked.`);
+    showToast(`Account ${username} permanently deleted.`);
     renderDatabaseTab();
   });
 }
@@ -2706,6 +2743,7 @@ function handleFileSelect(e) {
 
 // ══ UPLOAD MODAL ══
 function openUploadModal(mode, editId=null) {
+  currentUploadMode = mode;
   currentUploadMode=mode; currentEditingPostId=editId;
   currentTags=[]; renderScriptTags();
   const typeSelect=document.getElementById('upload-type');
@@ -2729,6 +2767,24 @@ function openUploadModal(mode, editId=null) {
     const creatorField = document.getElementById('upload-script-creator');
     if(creatorField) creatorField.value = APP.profile?.display_name || APP.currentUser || '';
   }
+  // Show/hide game link field based on current upload type
+  const uploadType = document.getElementById('upload-type');
+  const _glCheck = () => {
+    const gameLinkField = document.getElementById('game-link-field');
+    if(!gameLinkField) return;
+    const isClient = currentUploadMode === 'client_posts';
+    const val = uploadType?.value || '';
+    gameLinkField.style.display = (isClient && val === 'Script Games') ? 'block' : 'none';
+    if(gameLinkField.style.display === 'none') {
+      const inp=document.getElementById('upload-game-link');
+      if(inp){inp.value=''; inp.style.borderColor='#b026ff';}
+      const err=document.getElementById('game-link-error');
+      if(err) err.textContent='';
+    }
+  };
+  uploadType?.removeEventListener('change', _glCheck);
+  uploadType?.addEventListener('change', _glCheck);
+  _glCheck();
   openModal('modal-upload');
 }
 
@@ -4977,6 +5033,18 @@ function setupListeners(){
   document.getElementById('btn-copy-code').addEventListener('click',()=>{
     const code=document.getElementById('view-code').textContent;
     navigator.clipboard.writeText(code).then(()=>showToast("Code copied.")).catch(()=>showToast("Copy failed."));
+  });
+
+  document.getElementById('btn-download-code').addEventListener('click',()=>{
+    const code=document.getElementById('view-code').textContent;
+    const title=(document.getElementById('view-title').textContent||'script').replace(/[^a-z0-9_\-]/gi,'_');
+    const blob=new Blob([code],{type:'text/plain'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=title+'.lua';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast("Script downloaded!");
   });
 
   // Report submit
