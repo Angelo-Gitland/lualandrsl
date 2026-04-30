@@ -4348,9 +4348,6 @@ function moonsec_formatOutput(apiCalls,constants,key){
 
 function prometheusTrace(code, constEntries) {
   let out = code;
-  const mockEnv = {};
-  constEntries.forEach(entry => { if(entry.key !== undefined) mockEnv[entry.key] = entry.val; });
-
   const hooks = [
     [/getfenv\s*\(\s*\)/g, '_ENV'],
     [/setfenv\s*\([^)]+\)/g, ''],
@@ -4359,7 +4356,7 @@ function prometheusTrace(code, constEntries) {
     [/\btostring\s*\(\s*(\d+)\s*\)/g, (m,n)=>'"'+n+'"'],
     [/\btonumber\s*\(\s*"(\d+)"\s*\)/g, (m,n)=>n],
     [/string\.byte\s*\(\s*"(.)"\s*\)/g, (m,c)=>c.charCodeAt(0).toString()],
-    [/string\.char\s*\(([\d,\s]+)\)/g, (m,nums)=>{ try{return '"'+nums.split(',').map(n=>String.fromCharCode(parseInt(n.trim()))).join('')+'"';}catch(e){return m;}}],
+    [/string\.char\s*\(([\d,\s]+)\)/g, (m,nums)=>{try{return '"'+nums.split(',').map(n=>String.fromCharCode(parseInt(n.trim()))).join('')+'"';}catch(e){return m;}}],
     [/string\.rep\s*\(\s*"([^"]*)"\s*,\s*(\d+)\s*\)/g, (m,s,n)=>'"'+s.repeat(parseInt(n))+'"'],
     [/string\.reverse\s*\(\s*"([^"]*)"\s*\)/g, (m,s)=>'"'+s.split('').reverse().join('')+'"'],
     [/string\.len\s*\(\s*"([^"]*)"\s*\)/g, (m,s)=>s.length.toString()],
@@ -4370,389 +4367,106 @@ function prometheusTrace(code, constEntries) {
     [/math\.abs\s*\(\s*([\d.]+)\s*\)/g, (m,n)=>Math.abs(parseFloat(n)).toString()],
     [/#"([^"]*)"/g, (m,s)=>s.length.toString()],
   ];
-
-  let prev; let passes = 0;
+  let prev; let passes=0;
   do {
-    prev = out;
-    hooks.forEach(([pat, rep]) => { out = out.replace(pat, rep); });
-    out = out.replace(/"([^"\\]|\\.)*?"\s*\.\.\s*"([^"\\]|\\.)*?"/g, m => {
-      try {
-        const parts = m.split(/"\s*\.\.\s*"/);
-        if(parts.length >= 2) return '"'+parts.map(p=>p.replace(/^"|"$/g,'')).join('')+'"';
-      } catch(e){}
-      return m;
+    prev=out;
+    hooks.forEach(([pat,rep])=>{out=out.replace(pat,rep);});
+    out=out.replace(/"([^"\\]|\\.)*?"\s*\.\.\s*"([^"\\]|\\.)*?"/g,m=>{
+      try{const parts=m.split(/"\s*\.\.\s*"/);if(parts.length>=2)return '"'+parts.map(p=>p.replace(/^"|"$/g,'')).join('')+'"';}catch(e){}return m;
     });
     passes++;
-  } while(out !== prev && passes < 8);
-
-  out = out.replace(/\bif\s+true\s+then\b/g, '');
-  out = out.replace(/\bif\s+false\s+then[\s\S]{0,300}?end/g, '');
-  out = out.replace(/\bdo\s+end\b/g, '');
-  out = out.replace(/local\s+_+\s*=[^\n]+\n/g, '');
-  out = out.replace(/--[^\n]*/g, '');
-  out = out.replace(/\n{3,}/g, '\n\n');
+  } while(out!==prev && passes<8);
+  out=out.replace(/\bif\s+true\s+then\b/g,'');
+  out=out.replace(/\bif\s+false\s+then[\s\S]{0,300}?end/g,'');
+  out=out.replace(/\bdo\s+end\b/g,'');
+  out=out.replace(/local\s+_+\s*=[^\n]+\n/g,'');
+  out=out.replace(/--[^\n]*/g,'');
+  out=out.replace(/\n{3,}/g,'\n\n');
   return out.trim();
 }
 
-function luaDumperFormat(code, constants, apiCalls) {
-  const lines = code.split('\n');
-  const out = [];
-  let indent = 0;
-
-  const KEYWORDS_OPEN = /\b(function|do|then|repeat)\b/;
-  const KEYWORDS_CLOSE = /^\s*(end|until|\})\b/;
-  const KEYWORDS_ELSE = /^\s*(else|elseif)\b/;
-
-  for(let raw of lines){
-    const t = raw.trim();
-    if(!t) { out.push(''); continue; }
-
-    if(KEYWORDS_CLOSE.test(t) || KEYWORDS_ELSE.test(t)) indent = Math.max(0, indent-1);
-
-    out.push('  '.repeat(indent) + t);
-
-    if(KEYWORDS_OPEN.test(t) && !t.match(/\bend\b/) || KEYWORDS_ELSE.test(t)){
-      indent++;
-    }
-    if(t.match(/^if\b/) && t.match(/\bthen\b/) && !t.match(/\bend\b/)){
-      indent = Math.max(0, indent);
-    }
-    if(t.match(/\bfor\b.*\bdo\b/) || t.match(/\bwhile\b.*\bdo\b/)){
-      indent++;
-    }
+function moonsecExtract(source) {
+  const strings=[];let current='';let quoteParity=0;
+  for(const segment of source.split('"')) {
+    if(quoteParity%2===1)current+=segment;
+    quoteParity++;
+    if(!current.endsWith('\\')){strings.push(current);current='';}
+    else{current=current.slice(0,-1)+'"';quoteParity--;}
   }
-  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  let decoderVar='';
+  for(const str of strings) {
+    if(!str)continue;
+    const parts=source.split(str);if(parts.length<2)continue;
+    const beforeStr=parts[0];
+    const parenParts=beforeStr.split('(');
+    const lastBefore=parenParts[parenParts.length-1].split(',')[0];
+    if(lastBefore.split('').every(c=>c>='0'&&c<='9'))
+      decoderVar=parenParts[parenParts.length-2].slice(-1);
+    const idx=source.indexOf('"'+str);
+    if(decoderVar&&idx>6&&source.slice(idx-6,idx).includes(decoderVar+'(')&&str.length>300)
+      return str;
+  }
+  return null;
 }
 
-function wrd_findTableVar(code){
-  const m=code.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
-  return m?m[1]:null;
-}
-
-function wrd_foldNumbers(code){
-  let prev;let iters=0;
-  do{
-    prev=code;iters++;
-    code=code.replace(/(-?\d{4,})\s*([\+\-\*\/\%])\s*\((-?\d{4,})\)/g,(m,a,op,b)=>{
-      try{const r={'+':+a+(+b),'-':+a-(+b),'*':+a*(+b),'%':(+a%(+b)+Math.abs(+b))%Math.abs(+b),'/':+a/(+b)}[op];return Number.isFinite(r)?String(Math.round(r*1e9)/1e9):m;}catch(e){return m;}
-    });
-    code=code.replace(/(-?\d{4,})\s*\+\s*(-?\d{4,})\b/g,(m,a,b)=>{const r=+a+(+b);return(r>=0&&r<10000)?String(r):m;});
-    code=code.replace(/(-?\d{4,})\s*-\s*(-?\d{4,})\b/g,(m,a,b)=>{const r=+a-(+b);return(r>=0&&r<10000)?String(r):m;});
-  }while(code!==prev&&iters<20);
-  return code;
-}
-
-function wrd_decodeEscapes(code){
-  return code.replace(/"((?:[^"\\]|\\.)*)"/g,(match,inner)=>{
-    const d=inner.replace(/\\([0-9]{1,3})/g,(_,n)=>{const c=parseInt(n);return c>=32&&c<=126?String.fromCharCode(c):_+n;});
-    if(/[^\x20-\x7e\n\r\t]/.test(d))return match;
-    return'"'+d.replace(/"/g,'\\"')+'"';
-  });
-}
-
-function wrd_inlineConstants(code){
-  // Find: local VAR={"\NNN",...} — the big string table
-  const wrdPat=/local\s+([A-Za-z_]\w*)\s*=\s*\{([\s\S]*?)\}(?=\s*for\s+\w+\s*,\s*\w+\s+in\s+ipairs)/;
-  const genPat=/local\s+([A-Za-z_]\w*)\s*=\s*\{((?:\s*"(?:[^"\\]|\\.)*"\s*[;,]?\s*){8,})\}/g;
-
-  let tableName=null,entries=[],tableMatch=null;
-  let m=code.match(wrdPat);
-  if(m){tableName=m[1];tableMatch=m[0];_extractAllStrings(m[2],entries);}
-  else{
-    let gm,best=null,bestScore=0;
-    while((gm=genPat.exec(code))!==null){
-      const score=(gm[2].match(/\\[0-9]{2,3}/g)||[]).length;
-      if(score>bestScore){bestScore=score;best=gm;}
+function moonsecDecode(encoded) {
+  const charToIndex={};let pos=-1;let strIndex=1;
+  while(true){pos++;charToIndex[encoded[strIndex-1]]=pos;strIndex++;if(pos===15)break;}
+  const tryKey=(key)=>{
+    const result=[];let rollingKey=key;let si=strIndex;let pairIndex=0;
+    const pair={};const total=encoded.length;
+    while(si<total+1){
+      pair[pairIndex]=encoded[si-1];si++;pairIndex++;
+      if(pairIndex%2===0){
+        pairIndex=0;
+        const high=charToIndex[pair[0]]||0;
+        const low=charToIndex[pair[1]]||0;
+        result.push((((high)*0x10)+(low)+rollingKey)%0x100);
+        rollingKey=key+rollingKey;
+      }
     }
-    if(best){tableName=best[1];tableMatch=best[0];_extractAllStrings(best[2],entries);}
-  }
-  if(!tableName||entries.length===0)return{code,tableName:null,entries:[]};
-
-  // Decode \NNN in each entry then try base64
-  const decoded=entries.map(r=>{
-    const b=r.replace(/\\([0-9]{1,3})/g,(_,n)=>String.fromCharCode(parseInt(n)));
-    try{const d=atob(b.replace(/[^A-Za-z0-9+/=]/g,''));if(d&&/[a-zA-Z_]/.test(d)&&!/[\x00-\x08\x0e-\x1f\x7f]/.test(d))return d;}catch(e){}
-    return b;
-  });
-
-  // Simulate shuffle (WeAreDevs ipairs swap pattern)
-  const shufflePat=/for\s+\w+\s*,\s*\w+\s+in\s+ipairs\s*\(\{([\s\S]{0,3000}?)\}\s*\)\s*do/;
-  const sm=code.match(shufflePat);
-  if(sm){
-    const pairReg=/\{([^}]+)\}/g;let pm;
-    while((pm=pairReg.exec(sm[1]))!==null){
-      const nums=pm[1].split(/[;,]/).map(e=>{try{return Function('"use strict";return('+e+')')();}catch(e){return null;}}).filter(n=>n!==null&&Number.isFinite(n)&&Number.isInteger(n));
-      if(nums.length===2){const[ia,ib]=[nums[0]-1,nums[1]-1];if(ia>=0&&ib>=0&&ia<decoded.length&&ib<decoded.length)[decoded[ia],decoded[ib]]=[decoded[ib],decoded[ia]];}
-    }
-  }
-
-  // Find index offset from accessor fn
-  let offset=0;
-  const accM=code.match(/local\s+function\s+([A-Za-z_]\w*)\s*\(([A-Za-z_]\w*)\)\s*return\s+[A-Za-z_]\w*\s*\[\s*[A-Za-z_]\w*\s*-\s*([\d]+)\s*\]/);
-  const accName=accM?accM[1]:null;
-  if(accM)offset=parseInt(accM[3]);
-
-  const esc=tableName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  let result=code;
-
-  // Inline accessor fn calls: fn(EXPR) → "value"
-  if(accName){
-    const ae=accName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    result=result.replace(new RegExp('\\b'+ae+'\\s*\\(([^)]{1,100})\\)','g'),(match,expr)=>{
-      try{const idx=Function('"use strict";return('+expr+')')()-offset-1;if(idx>=0&&idx<decoded.length&&decoded[idx])return'"'+decoded[idx].replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}catch(e){}return match;
-    });
-    result=result.replace(new RegExp('local\\s+function\\s+'+ae+'\\s*\\([^)]*\\)[^e]*end\\s*'),'');
-  }
-
-  // Inline TABLE[EXPR] → "value"
-  result=result.replace(new RegExp(esc+'\\s*\\[([^\\]]{1,120})\\]','g'),(match,expr)=>{
-    try{const idx=Function('"use strict";return('+expr+')')()-1;if(idx>=0&&idx<decoded.length&&decoded[idx])return'"'+decoded[idx].replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}catch(e){}return match;
-  });
-
-  // Remove table + shuffle boilerplate
-  result=result.replace(new RegExp('local\\s+'+esc+'\\s*=\\s*\\{[\\s\\S]+?\\}\\s*(?=for\\s+\\w+\\s*,\\s*\\w+\\s+in\\s+ipairs)'),'-- [String table removed]\n');
-  result=result.replace(/for\s+\w+\s*,\s*\w+\s+in\s+ipairs\s*\(\{[\s\S]{0,3000}?\}\s*\)\s*do[\s\S]{0,2000}?end\s*end/g,'-- [Shuffle removed]\n');
-
-  return{code:result,tableName,entries:decoded};
-}
-
-// deobfuscator.py vm_parser.py ROBLOX_GLOBALS check — parse_vm equivalent for JS
-function wrd_parseConstants(code,decoded){
-  const apiCalls=[];const constants=[];const seen=new Set();
-  // From decoded entries (the actual constant table contents)
-  decoded.forEach(v=>{
-    if(!v||seen.has(v))return;seen.add(v);
-    if(LUA_KEYWORDS.has(v))return;
-    if(ROBLOX_GLOBALS.has(v))apiCalls.push(v);
-    else if(v.length>=2&&v.length<=80&&/[a-zA-Z]/.test(v)&&!/[\x00-\x1f\x7f]/.test(v))constants.push(v);
-  });
-  // Also extract from remaining code strings
-  const sr=/"((?:[^"\\]|\\.)*)"/g;let m;
-  while((m=sr.exec(code))!==null){
-    const v=m[1].trim();
-    if(!v||seen.has(v)||v.length<2||v.length>80)continue;
-    if(LUA_KEYWORDS.has(v)||/[\x00-\x1f\x7f]/.test(v))continue;
-    seen.add(v);
-    if(ROBLOX_GLOBALS.has(v))apiCalls.push(v);
-    else if(/[a-zA-Z]/.test(v))constants.push(v);
-  }
-  return{apiCalls,constants};
-}
-
-function wrd_postprocess(code){
-  // Fold string concatenations
-  let prev;
-  do{
-    prev=code;
-    code=code.replace(/"((?:[^"\\]|\\.)*)"\s*\.\.\s*"((?:[^"\\]|\\.)*)"/g,(m,a,b)=>'"'+a+b+'"');
-  }while(code!==prev);
-  // Decode string.char()
-  code=code.replace(/string\.char\s*\(([\d,\s]+)\)/g,(match,nums)=>{
+    return result.map(b=>String.fromCharCode(b)).join('');
+  };
+  for(let key=0;key<100000;key++){
     try{
-      const chars=nums.split(',').map(n=>String.fromCharCode(parseInt(n.trim())));
-      if(chars.some(c=>c.charCodeAt(0)<32&&c!=='\n'))return match;
-      return'"'+chars.join('').replace(/"/g,'\\"')+'"';
-    }catch(e){return match;}
-  });
-  // Remove block comments
-  code=code.replace(/--\[\[[\s\S]*?\]\]/g,'');
-  // Remove PHASE_BOUNDARY markers
-  code=code.replace(/--\s*PHASE_BOUNDARY:[^\n]*/g,'');
-  // Remove dead if false blocks
-  code=code.replace(/if\s+false\s+then[\s\S]{0,500}?end\s*\n?/g,'');
-  // Remove empty do end blocks
-  code=code.replace(/\bdo\s+end\b\s*\n?/g,'');
-  // Remove underscore-only junk locals
-  code=code.replace(/local\s+_+\s*=[^\n]+\n/g,'');
-  // Strip pure junk lines
-  const lines=code.split('\n');
-  const clean=lines.filter(line=>{
-    const t=line.trim();
-    if(!t)return true;
-    if(/\b(local|function|if|then|else|end|do|while|for|return|true|false|nil|and|or|not|in|repeat|until|break)\b/.test(t))return true;
-    if(/\b(game|workspace|Players|script|require|print|warn|error|pcall|xpcall|GetService|WaitForChild|FindFirstChild|Connect|Fire|Instance|task|math|string|table|os|io|coroutine)\b/i.test(t))return true;
-    if(/=\s*"[^"]*"/.test(t))return true;
-    if(/^[a-zA-Z_]\w*[\s.(\[:]/.test(t))return true;
-    if(/^[\d\s\+\-\*\/\%\^\(\)\[\]\{\},\.;=<>~#:]+$/.test(t)&&t.length>25)return false;
-    return true;
-  });
-  // Collapse multiple blank lines to one
-  const deduped=[];let blankCount=0;
-  for(const l of clean){
-    if(!l.trim()){blankCount++;if(blankCount<=1)deduped.push(l);}
-    else{blankCount=0;deduped.push(l);}
-  }
-  return deduped.join('\n').trim();
-}
-function _extractAllStrings(body,arr){
-  const sr=/"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'/g;let m;
-  while((m=sr.exec(body))!==null)arr.push(m[1]!==undefined?m[1]:m[2]);
-}
-
-async function dumperDump(){
-  const code=dumperGetInput().trim();
-  const out=document.getElementById('dumper-output');
-  if(!code){dumperSetStatus('No code provided.',false);return;}
-
-  const detected=dumperDetect(code);
-  if(detected===null){out.value='';dumperSyncLines('out');return dumperSetStatus('Unsupported (Luraph/Secrovia).',false);}
-  dumperSetStatus('Detected: '+detected+' — processing...',null);
-  out.value='-- Processing...\n';
-
-  // Use MoonSec path for MoonSec scripts
-  if(detected==='MoonSec'){
-    dumperSetStatus('MoonSec V3 — extracting encoded bytecode...',null);
-    const encoded=moonsec_extractEncodedBytecode(code);
-    if(!encoded){
-      out.value='-- [MoonSec] Could not find encoded bytecode string.\n-- Try using the WeAreDevs path instead.';
-      dumperSetStatus('Could not extract MoonSec bytecode.',false);
-      dumperSyncLines('out');return;
-    }
-    out.value='-- [MoonSec] Encoded string found ('+encoded.length+' chars)\n-- [MoonSec] Brute-forcing key (0-10000)...\n';
-    dumperSyncLines('out');
-    const {key,bytes}=await moonsec_findKey(encoded,(k,max)=>{
-      dumperSetStatus('MoonSec — trying key '+k+'/'+max+'...',null);
-    });
-    if(!key&&key!==0){
-      out.value+='-- [MoonSec] Key not found in range 0-10000.\n-- [MoonSec] Key may be >10000 (browser limitation).\n-- [MoonSec] Falling back to static analysis...\n\n';
-      // Fall through to static analysis below
-    } else {
-      const{apiCalls,constants}=moonsec_parseVM(bytes);
-      out.value=moonsec_formatOutput(apiCalls,constants,key);
-      dumperSetStatus('MoonSec done! Key='+key+', '+constants.length+' constants, '+apiCalls.length+' API calls.',true);
-      dumperSyncLines('out');return;
-    }
-  }
-
-  // Prometheus WeAreDevs trace-based deobfuscator (port of deobfuscator.py)
-  setTimeout(()=>{
-    try{
-      let w = code;
-      let log = '';
-
-      // Phase 1: Normalize Luau syntax (compound operators like +=, -=)
-      w = prometheusNormalizeLuau(w);
-
-      // Phase 2: Find the string constant table variable
-      const tableMatch = w.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
-      const varName = tableMatch ? tableMatch[1] : null;
-
-      // Phase 3: Fold arithmetic constants
-      w = wrd_foldNumbers(w);
-
-      // Phase 4: Decode byte escape sequences \NNN
-      w = wrd_decodeEscapes(w);
-
-      // Phase 5: Inline constant table entries
-      const {code: w2, tableName, entries} = wrd_inlineConstants(w);
-      w = w2;
-
-      // Phase 6: Prometheus mock-env trace simulation
-      // Hooks: string.char, string.byte, string.rep, string.reverse,
-      //        string.upper/lower, math.*, tostring, tonumber,
-      //        rawget, rawset, getfenv, setfenv, table.concat
-      w = prometheusTrace(w, entries);
-
-      // Phase 7: Postprocess — fold concats, strip dead code, junk locals
-      w = wrd_postprocess(w);
-
-      // Phase 8: Parse and extract constants + API calls
-      const {apiCalls, constants} = wrd_parseConstants(w, entries);
-
-      // Phase 9: Replace inlined string literals with _K references
-      let stripped = w;
-      constants.forEach((val, i) => {
-        const esc = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        stripped = stripped.replace(new RegExp('"' + esc + '"|\'' + esc + '\'', 'g'), '_K' + (i+1));
-      });
-
-      // Phase 10: Build clean output (lua-dumper style)
-      if(apiCalls.length > 0){
-        const uniq = [...new Set(apiCalls)].sort();
-        log += 'local _api = {\n';
-        uniq.forEach(c => { log += '  "' + c + '",\n'; });
-        log += '}\n\n';
+      const str=tryKey(key);
+      if(str.includes('MoonSec')||str.includes('local ')||str.includes('function ')){
+        return {key,decoded:str};
       }
-      if(constants.length > 0){
-        log += 'local _K = {\n';
-        constants.forEach((c, i) => {
-          log += '  _K' + (i+1) + ' = "' + c.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '",\n';
-        });
-        log += '}\n\n';
-      }
-
-      // Phase 11: Strip constant declarations from reconstructed code body
-      //           (they are already shown in _K table above)
-      let finalCode = stripped;
-
-      // Remove the original string table declaration (it's replaced by _K)
-      if(varName) {
-        const tableRe = new RegExp('local\\s+' + varName + '\\s*=\\s*\\{[^}]*\\}', 'g');
-        finalCode = finalCode.replace(tableRe, '');
-      }
-
-      // Strip lines that are pure junk / non-Roblox Lua syntax
-      finalCode = prometheusStripJunk(finalCode);
-
-      // Phase 12: Format with proper Lua indentation
-      log += luaDumperFormat(finalCode, constants, apiCalls);
-
-      out.value = log;
-      const label = varName ? ' | Table: ' + varName : '';
-      dumperSetStatus('Done: ' + constants.length + ' constants, ' + apiCalls.length + ' API calls' + label + '. [' + detected + ']', true);
-
-    }catch(e){
-      out.value = 'Error: ' + e.message + '\n' + (e.stack||'');
-      dumperSetStatus('Error: ' + e.message, false);
-    }
-    dumperSyncLines('out');
-  }, 100);
-}
-
-function prometheusStripJunk(code) {
-  const lines = code.split('\n');
-  const ROBLOX_KEYWORDS = /\b(local|function|if|then|else|elseif|end|do|while|for|repeat|until|return|break|in|and|or|not|true|false|nil)\b/;
-  const ROBLOX_APIS = /\b(game|workspace|script|require|print|warn|error|pcall|xpcall|task|wait|spawn|delay|Instance|Vector2|Vector3|CFrame|UDim2|Color3|BrickColor|Enum|Players|RunService|UserInputService|TweenService|HttpService|ReplicatedStorage|ServerStorage|Lighting|SoundService|GuiService|StarterGui|LocalPlayer|Character|Humanoid|HumanoidRootPart|GetService|WaitForChild|FindFirstChild|FindFirstAncestor|IsA|Clone|Destroy|Connect|Disconnect|Fire|FireServer|FireClient|FireAllClients|InvokeServer|OnClientEvent|OnServerEvent|math|string|table|os|io|coroutine|tostring|tonumber|type|pairs|ipairs|next|select|unpack|rawget|rawset|setmetatable|getmetatable|assert)\b/;
-
-  const clean = lines.filter(line => {
-    const t = line.trim();
-    if(!t || t === '') return false;
-
-    // Keep lines with Lua keywords
-    if(ROBLOX_KEYWORDS.test(t)) return true;
-    // Keep lines with Roblox API calls
-    if(ROBLOX_APIS.test(t)) return true;
-    // Keep assignments: x = ...
-    if(/^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*|\[[^\]]+\])*\s*=\s*.+/.test(t)) return true;
-    // Keep function calls: x(...)
-    if(/^[a-zA-Z_][\w.]*\s*\(/.test(t)) return true;
-    // Keep table constructors
-    if(/^\{/.test(t) || /^\}/.test(t)) return true;
-    // Keep _K and _api references
-    if(/\b_K\d+\b/.test(t) || /\b_api\b/.test(t)) return true;
-    // Keep string literals on their own (return values etc)
-    if(/^"[^"]*"$/.test(t) || /^'[^']*'$/.test(t)) return true;
-    // Keep comments that look meaningful (not just separators)
-    if(/^--\s*\w/.test(t)) return true;
-    // DROP: pure number sequences, encoded garbage
-    if(/^[\d\s\+\-\*\/\%\^\(\)\[\]\{\},\.;=<>~#:]+$/.test(t) && t.length > 20) return false;
-    // DROP: lines of only escape sequences
-    if(/^(\\[0-9]{1,3})+$/.test(t)) return false;
-    // DROP: lines that are just operators with no identifiers
-    if(/^[^a-zA-Z_"'`]+$/.test(t) && t.length > 3) return false;
-
-    return true;
-  });
-
-  // Collapse 3+ blank lines to 1
-  const deduped = [];
-  let blanks = 0;
-  for(const l of clean) {
-    if(!l.trim()) { blanks++; if(blanks <= 1) deduped.push(''); }
-    else { blanks = 0; deduped.push(l); }
+    }catch(e){}
   }
-  return deduped.join('\n').trim();
+  return null;
 }
+
+function moonsecParseVM(decoded) {
+  const ROBLOX_GLOBALS=new Set(['game','workspace','script','wait','spawn','delay','print','warn','error','pcall','xpcall','pairs','ipairs','tostring','tonumber','type','math','string','table','Instance','Vector3','CFrame','Color3','UDim2','UDim','Enum','task','Players','RunService','UserInputService','ReplicatedStorage','TweenService','HttpService','loadstring','require','coroutine','select','rawget','rawset','setmetatable','getmetatable','next','unpack','assert']);
+  const LUA_KEYWORDS=new Set(['function','local','return','if','then','else','elseif','end','while','do','for','in','repeat','until','break','true','false','nil','and','or','not']);
+  const apiCalls=[],constants=[],seen=new Set();
+  const re=/[\x20-\x7E]{3,}/g;let m;
+  while((m=re.exec(decoded))!==null){
+    const s=m[0];if(seen.has(s))continue;seen.add(s);
+    if(LUA_KEYWORDS.has(s))continue;
+    if(ROBLOX_GLOBALS.has(s))apiCalls.push(s);
+    else if(/[a-zA-Z]/.test(s))constants.push(s);
+  }
+  return {apiCalls,constants};
+}
+
+function moonsecBuildOutput(apiCalls,constants,key) {
+  let log='';
+  if(apiCalls.length>0){
+    log+='local _api = {\n';
+    [...new Set(apiCalls)].sort().forEach(c=>{log+='  "'+c+'",\n';});
+    log+='}\n\n';
+  }
+  if(constants.length>0){
+    log+='local _constants = {\n';
+    constants.forEach(c=>{log+='  "'+c.replace(/"/g,'\\"')+'",\n';});
+    log+='}\n\n';
+  }
+  return log;
+}
+
 
 function prometheusNormalizeLuau(code) {
   const ops = ['+=', '-=', '*=', '/=', '%=', '..='];
@@ -5626,6 +5340,88 @@ async function secProtectMeVerify() {
       </button>
     </div>
   </div>
+
+</body>
+</htmlasync function dumperDump(){
+  const inp=document.getElementById('dump-input');
+  const out=document.getElementById('dump-output');
+  if(!inp||!out)return;
+  const code=inp.value.trim();
+  if(!code)return showToast('Paste a Lua script first.');
+  dumperSetStatus('Detecting obfuscator...');
+  const detected=_detectObfuscator(code);
+  dumperSetStatus('Detected: '+detected+' — Processing...');
+
+  setTimeout(()=>{
+    try{
+      let log='';
+
+      if(detected==='MoonSec V2'||detected==='MoonSec V3'||detected==='MoonSec') {
+        dumperSetStatus('MoonSec detected — Extracting encoded block...');
+        const encoded=moonsecExtract(code);
+        if(!encoded){
+          out.value='Could not extract MoonSec encoded bytecode.\nMake sure the script is a valid MoonSec obfuscated file.';
+          dumperSetStatus('Extraction failed.',false);return;
+        }
+        dumperSetStatus('Block found ('+encoded.length+' chars) — Searching decryption key...');
+        const result=moonsecDecode(encoded);
+        if(!result){
+          out.value='Could not find MoonSec decryption key after 100,000 attempts.';
+          dumperSetStatus('Key not found.',false);return;
+        }
+        const {apiCalls,constants}=moonsecParseVM(result.decoded);
+        log=moonsecBuildOutput(apiCalls,constants,result.key);
+        log=prometheusStripJunk(log);
+        log=luaDumperFormat(log,constants,apiCalls);
+        out.value=log;
+        dumperSetStatus('MoonSec done! Key: '+result.key+' | '+constants.length+' constants, '+apiCalls.length+' API calls.',true);
+
+      } else {
+        dumperSetStatus('WeAreDevs/Prometheus detected — Running trace engine...');
+        let w=code;
+        w=prometheusNormalizeLuau(w);
+        const tableMatch=w.match(/local\s+([a-zA-Z0-9_]+)\s*=\s*\{"/);
+        const varName=tableMatch?tableMatch[1]:null;
+        w=wrd_foldNumbers(w);
+        w=wrd_decodeEscapes(w);
+        const{code:w2,tableName,entries}=wrd_inlineConstants(w);
+        w=w2;
+        w=prometheusTrace(w,entries);
+        w=wrd_postprocess(w);
+        const{apiCalls,constants}=wrd_parseConstants(w,entries);
+        let stripped=w;
+        constants.forEach((val,i)=>{
+          const esc=val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+          stripped=stripped.replace(new RegExp('"'+esc+'"|\''+esc+'\'','g'),'_K'+(i+1));
+        });
+        if(varName){
+          const tRe=new RegExp('local\\s+'+varName+'\\s*=\\s*\\{[\\s\\S]*?\\}','g');
+          stripped=stripped.replace(tRe,'');
+        }
+        stripped=prometheusStripJunk(stripped);
+        if(apiCalls.length>0){
+          const uniq=[...new Set(apiCalls)].sort();
+          log+='local _api = {\n';
+          uniq.forEach(c=>{log+='  "'+c+'",\n';});
+          log+='}\n\n';
+        }
+        if(constants.length>0){
+          log+='local _K = {\n';
+          constants.forEach((c,i)=>{log+='  _K'+(i+1)+' = "'+c.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'",\n';});
+          log+='}\n\n';
+        }
+        log+=luaDumperFormat(stripped,constants,apiCalls);
+        out.value=log;
+        const label=varName?' | Table: '+varName:'';
+        dumperSetStatus('Done: '+constants.length+' constants, '+apiCalls.length+' API calls'+label+'. ['+detected+']',true);
+      }
+    }catch(e){
+      out.value='Error: '+e.message+'\n'+(e.stack||'');
+      dumperSetStatus('Error: '+e.message,false);
+    }
+    dumperSyncLines('out');
+  },100);
+}
 
 </body>
 </html>
